@@ -23,42 +23,52 @@ except ImportError:
 
 def parse_serial_numbers(serial_numbers_str: str) -> List[str]:
     """
-    Parse comma-separated serial numbers from a string.
+    Parse comma-separated filenames (serial numbers) from a string.
     
     Args:
-        serial_numbers_str: String containing comma-separated serial numbers
+        serial_numbers_str: String containing comma-separated filenames
         
     Returns:
-        List of serial numbers (stripped of whitespace)
+        List of filenames (stripped of whitespace)
     """
     if not serial_numbers_str or not serial_numbers_str.strip():
         return []
     
-    # Split by comma and strip whitespace from each serial number
-    serials = [s.strip() for s in serial_numbers_str.split(',')]
+    # Split by comma and strip whitespace from each filename
+    filenames = [s.strip() for s in serial_numbers_str.split(',')]
     # Filter out empty strings
-    return [s for s in serials if s]
+    return [s for s in filenames if s]
 
 
 def find_pdf_file(folder: Path, serial_number: str) -> Optional[Path]:
     """
-    Find a PDF file matching the serial number in the given folder.
+    Find a PDF file matching the serial number (filename) in the given folder.
     
     Args:
         folder: Path to the folder containing PDF files
-        serial_number: Serial number to search for
+        serial_number: Filename (with or without .pdf extension) to search for
         
     Returns:
         Path to the PDF file if found, None otherwise
     """
-    # Try exact match first: serial_number.pdf
+    # If serial_number already has .pdf extension, try that first
+    if serial_number.lower().endswith('.pdf'):
+        pdf_path = folder / serial_number
+        if pdf_path.exists():
+            return pdf_path
+    
+    # Try with .pdf extension appended
     pdf_path = folder / f"{serial_number}.pdf"
     if pdf_path.exists():
         return pdf_path
     
-    # Try case-insensitive search
+    # Try case-insensitive search (exact filename match)
+    serial_lower = serial_number.lower()
     for pdf_file in folder.glob("*.pdf"):
-        if pdf_file.stem.lower() == serial_number.lower():
+        if pdf_file.name.lower() == serial_lower or pdf_file.name.lower() == f"{serial_lower}.pdf":
+            return pdf_file
+        # Also try matching just the stem (filename without extension)
+        if pdf_file.stem.lower() == serial_lower:
             return pdf_file
     
     return None
@@ -108,37 +118,37 @@ def process_csv_row(row_index: int, serial_numbers_str: str, source_folder: Path
     
     Args:
         row_index: Index of the row (0-based, for naming output file)
-        serial_numbers_str: Comma-separated serial numbers from the row
+        serial_numbers_str: Comma-separated filenames from the serial_numbers column
         source_folder: Folder containing the PDF files
         output_folder: Folder where merged PDFs will be saved
         
     Returns:
         True if successful, False otherwise
     """
-    # Parse serial numbers
-    serial_numbers = parse_serial_numbers(serial_numbers_str)
+    # Parse filenames from serial_numbers column
+    filenames = parse_serial_numbers(serial_numbers_str)
     
-    if not serial_numbers:
-        print(f"Row {row_index + 1}: No serial numbers found, skipping...")
+    if not filenames:
+        print(f"Row {row_index + 1}: No filenames found, skipping...")
         return False
     
-    print(f"Row {row_index + 1}: Processing serial numbers: {', '.join(serial_numbers)}")
+    print(f"Row {row_index + 1}: Processing filenames: {', '.join(filenames)}")
     
-    # Find PDF files for each serial number
+    # Find PDF files for each filename
     pdf_paths = []
     missing_files = []
     
-    for serial in serial_numbers:
-        pdf_path = find_pdf_file(source_folder, serial)
+    for filename in filenames:
+        pdf_path = find_pdf_file(source_folder, filename)
         if pdf_path:
             pdf_paths.append(pdf_path)
             print(f"  Found: {pdf_path.name}")
         else:
-            missing_files.append(serial)
-            print(f"  Warning: PDF file not found for serial number '{serial}'")
+            missing_files.append(filename)
+            print(f"  Warning: PDF file not found for filename '{filename}'")
     
     if not pdf_paths:
-        print(f"Row {row_index + 1}: No PDF files found for any serial numbers, skipping...")
+        print(f"Row {row_index + 1}: No PDF files found for any filenames, skipping...")
         return False
     
     # Create output filename

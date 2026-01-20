@@ -37,27 +37,32 @@ python merge_pdfs.py --csv data.csv --folder ./pdfs --output ./merged_output
 
 ## CSV Format
 
-The CSV file must contain a column named `serial_numbers`. Each row should contain comma-separated serial numbers that correspond to PDF filenames.
+The CSV file must contain a column named `serial_numbers`. Each row should contain comma-separated filenames (strings) that correspond to PDF files in your folder.
 
 ### Example CSV
 
 ```csv
 serial_numbers
-1,2,3,6
-1,2,6
-4,5,7
+ABC123,DEF456,GHI789
+ABC123,XYZ999
+document1,document2,document3
 ```
 
 This will create:
-- `merged_row_1.pdf` - merges 1.pdf, 2.pdf, 3.pdf, 6.pdf
-- `merged_row_2.pdf` - merges 1.pdf, 2.pdf, 6.pdf
-- `merged_row_3.pdf` - merges 4.pdf, 5.pdf, 7.pdf
+- `merged_row_1.pdf` - merges ABC123.pdf, DEF456.pdf, GHI789.pdf
+- `merged_row_2.pdf` - merges ABC123.pdf, XYZ999.pdf
+- `merged_row_3.pdf` - merges document1.pdf, document2.pdf, document3.pdf
 
 ## PDF File Naming
 
-The script looks for PDF files named exactly as the serial number with a `.pdf` extension. For example:
-- Serial number `1` → looks for `1.pdf`
-- Serial number `123` → looks for `123.pdf`
+The script looks for PDF files matching the filenames specified in the CSV. Each string in the `serial_numbers` column represents a unique filename. The script will:
+- Look for files with the exact filename (with or without `.pdf` extension)
+- Try case-insensitive matching if exact match is not found
+
+For example:
+- Filename `ABC123` → looks for `ABC123.pdf` or `ABC123`
+- Filename `document1.pdf` → looks for `document1.pdf`
+- Filename `MyFile` → looks for `MyFile.pdf` or `MyFile`
 
 ## Output
 
