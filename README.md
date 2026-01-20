@@ -6,6 +6,7 @@ This script merges PDF files based on serial numbers specified in a CSV file. Ea
 
 - Python 3.6 or higher
 - pypdf library
+- pandas and openpyxl (for Excel file support)
 
 ## Installation
 
@@ -17,36 +18,55 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the script with the following command:
+### Interactive Mode (Recommended)
+
+For a simpler experience, use the interactive interface:
+
+```bash
+python main.py
+```
+
+The script will prompt you for:
+- CSV file path
+- Folder containing PDF files
+- Output folder path
+
+### Command Line Mode
+
+Alternatively, run the script directly with command-line arguments:
 
 ```bash
 python merge_pdfs.py --csv <csv_file> --folder <pdf_folder> --output <output_folder>
 ```
 
-### Arguments
+#### Arguments
 
 - `--csv`: Path to the CSV file containing the `serial_numbers` column
 - `--folder`: Path to the folder containing the PDF files to merge
 - `--output`: Path to the output folder where merged PDFs will be saved
 
-### Example
+#### Example
 
 ```bash
 python merge_pdfs.py --csv data.csv --folder ./pdfs --output ./merged_output
 ```
 
-## CSV Format
+## File Format
 
-The CSV file must contain a column named `serial_numbers`. Each row should contain comma-separated filenames (strings) that correspond to PDF files in your folder.
+The script supports both **CSV** (`.csv`) and **Excel** (`.xlsx`, `.xls`) files. The file must contain a column named `serial_numbers`. Each row should contain comma-separated filenames (strings) that correspond to PDF files in your folder.
 
-### Example CSV
+### Example (CSV or Excel)
 
+**CSV format:**
 ```csv
 serial_numbers
 ABC123,DEF456,GHI789
 ABC123,XYZ999
 document1,document2,document3
 ```
+
+**Excel format:**
+The same structure in an Excel file (`.xlsx` or `.xls`) with a column header `serial_numbers` in the first row.
 
 This will create:
 - `merged_row_1.pdf` - merges ABC123.pdf, DEF456.pdf, GHI789.pdf
