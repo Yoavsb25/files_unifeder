@@ -20,6 +20,11 @@ except ImportError:
         print("Error: pypdf or PyPDF2 library is required. Install with: pip install pypdf")
         sys.exit(1)
 
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+
 
 def parse_serial_numbers(serial_numbers_str: str) -> List[str]:
     """
@@ -170,12 +175,12 @@ def process_csv_row(row_index: int, serial_numbers_str: str, source_folder: Path
 def main():
     """Main function to process CSV and merge PDFs."""
     parser = argparse.ArgumentParser(
-        description="Merge PDFs based on serial numbers from a CSV file. Each row produces one merged PDF."
+        description="Merge PDFs based on serial numbers from a CSV or Excel file. Each row produces one merged PDF."
     )
     parser.add_argument(
         '--csv',
         required=True,
-        help='Path to the CSV file containing serial_numbers column'
+        help='Path to the CSV or Excel file (.csv, .xlsx, .xls) containing serial_numbers column'
     )
     parser.add_argument(
         '--folder',
@@ -204,43 +209,72 @@ def main():
     output_folder = Path(args.output)
     output_folder.mkdir(parents=True, exist_ok=True)
     
-    # Read CSV file
+    # Read file (CSV or Excel)
     try:
-        with open(csv_path, 'r', encoding='utf-8') as csvfile:
-            # Try to detect delimiter
-            sample = csvfile.read(1024)
-            csvfile.seek(0)
-            sniffer = csv.Sniffer()
-            delimiter = sniffer.sniff(sample).delimiter
+        # Check if it's an Excel file
+        if csv_path.suffix.lower() in ['.xlsx', '.xls']:
+            if pd is None:
+                print("Error: pandas and openpyxl are required to read Excel files.")
+                print("Install with: pip install pandas openpyxl")
+                sys.exit(1)
             
-            reader = csv.DictReader(csvfile, delimiter=delimiter)
+            # Read Excel file
+            df = pd.read_excel(csv_path)
             
             # Check if serial_numbers column exists
-            if 'serial_numbers' not in reader.fieldnames:
-                print(f"Error: 'serial_numbers' column not found in CSV file.")
-                print(f"Available columns: {', '.join(reader.fieldnames)}")
+            if 'serial_numbers' not in df.columns:
+                print(f"Error: 'serial_numbers' column not found in file.")
+                print(f"Available columns: {', '.join(df.columns)}")
                 sys.exit(1)
             
             # Process each row
             success_count = 0
             total_rows = 0
             
-            for row_index, row in enumerate(reader):
+            for row_index, row in df.iterrows():
                 total_rows += 1
-                serial_numbers_str = row.get('serial_numbers', '')
+                # Convert to string and handle NaN values
+                serial_numbers_str = str(row.get('serial_numbers', '')) if pd.notna(row.get('serial_numbers')) else ''
                 
                 if process_csv_row(row_index, serial_numbers_str, source_folder, output_folder):
                     success_count += 1
-            
-            print(f"\n{'='*60}")
-            print(f"Processing complete!")
-            print(f"Total rows processed: {total_rows}")
-            print(f"Successfully merged PDFs: {success_count}")
-            print(f"Output folder: {output_folder}")
-            print(f"{'='*60}")
-            
+        else:
+            # Read CSV file
+            with open(csv_path, 'r', encoding='utf-8') as csvfile:
+                # Try to detect delimiter
+                sample = csvfile.read(1024)
+                csvfile.seek(0)
+                sniffer = csv.Sniffer()
+                delimiter = sniffer.sniff(sample).delimiter
+                
+                reader = csv.DictReader(csvfile, delimiter=delimiter)
+                
+                # Check if serial_numbers column exists
+                if 'serial_numbers' not in reader.fieldnames:
+                    print(f"Error: 'serial_numbers' column not found in file.")
+                    print(f"Available columns: {', '.join(reader.fieldnames)}")
+                    sys.exit(1)
+                
+                # Process each row
+                success_count = 0
+                total_rows = 0
+                
+                for row_index, row in enumerate(reader):
+                    total_rows += 1
+                    serial_numbers_str = row.get('serial_numbers', '')
+                    
+                    if process_csv_row(row_index, serial_numbers_str, source_folder, output_folder):
+                        success_count += 1
+        
+        print(f"\n{'='*60}")
+        print(f"Processing complete!")
+        print(f"Total rows processed: {total_rows}")
+        print(f"Successfully merged PDFs: {success_count}")
+        print(f"Output folder: {output_folder}")
+        print(f"{'='*60}")
+        
     except Exception as e:
-        print(f"Error reading CSV file: {e}")
+        print(f"Error reading file: {e}")
         sys.exit(1)
 
 
