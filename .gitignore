@@ -179,3 +179,20 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+# License and keys (sensitive)
+tools/private_key.pem
+*.pem
+license.json
+pdf_merger/licensing/public_key.pem
+pdf_merger/licensing/private_key.pem
+
+# Build artifacts
+build/
+dist/
+*.app
+*.exe
+*.spec
+
+# Config files (may contain user-specific paths)
+config.json
+~/.pdf_merger/

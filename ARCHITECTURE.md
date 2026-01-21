@@ -1,326 +1,364 @@
-# PDF Merger - Architecture Diagram
+# PDF Batch Merger - Architecture Documentation
 
-This document contains Mermaid diagrams showing the architecture and workflow of the PDF Merger project.
+## Table of Contents
 
-## System Architecture & Data Flow
+1. [Overview](#overview)
+2. [System Architecture](#system-architecture)
+3. [Component Structure](#component-structure)
+4. [Data Flow](#data-flow)
+5. [Architecture Principles](#architecture-principles)
 
-```mermaid
-flowchart TB
-    Start([User Starts Application]) --> CheckArgs{Command Line<br/>Arguments?}
-    
-    CheckArgs -->|Yes| CLI[CLI Mode<br/>command_line.py]
-    CheckArgs -->|No| Interactive[Interactive Mode<br/>interactive.py]
-    
-    CLI --> ParseArgs[Parse Arguments<br/>argparse]
-    Interactive --> GetInput[Get User Input<br/>Prompts for paths]
-    
-    ParseArgs --> ValidateCLI[validate_paths]
-    GetInput --> ValidateInteractive[validate_file<br/>validate_folder]
-    
-    ValidateCLI -->|Invalid| Exit1[Exit with Error]
-    ValidateInteractive -->|Invalid| Retry[Prompt Again]
-    Retry --> GetInput
-    
-    ValidateCLI -->|Valid| Process[process_file]
-    ValidateInteractive -->|Valid| Process
-    
-    Process --> CreateOutput[Create Output Folder]
-    CreateOutput --> ReadFile[read_data_file]
-    
-    ReadFile --> DetectType{File Type?}
-    DetectType -->|CSV| ReadCSV[read_csv<br/>Detect Delimiter]
-    DetectType -->|Excel| ReadExcel[read_excel<br/>pandas]
-    
-    ReadCSV --> IterateRows[Iterate Rows]
-    ReadExcel --> IterateRows
-    
-    IterateRows --> ProcessRow[process_row]
-    
-    ProcessRow --> ParseData[parse_serial_numbers<br/>Split comma-separated]
-    ParseData --> FindPDFs[For each filename:<br/>find_pdf_file]
-    
-    FindPDFs --> SearchPDF[Search Source Folder<br/>Case-insensitive match]
-    SearchPDF -->|Found| AddToList[Add to PDF List]
-    SearchPDF -->|Not Found| LogWarning[Log Warning]
-    
-    AddToList --> CheckMore{More<br/>Filenames?}
-    LogWarning --> CheckMore
-    CheckMore -->|Yes| FindPDFs
-    CheckMore -->|No| CheckPDFs{Any PDFs<br/>Found?}
-    
-    CheckPDFs -->|No| SkipRow[Skip Row<br/>Return False]
-    CheckPDFs -->|Yes| MergePDFs[merge_pdfs]
-    
-    MergePDFs --> CreateWriter[Create PdfWriter]
-    CreateWriter --> ReadEachPDF[For each PDF:<br/>PdfReader + Add Pages]
-    ReadEachPDF --> WriteOutput[Write Merged PDF<br/>merged_row_N.pdf]
-    
-    WriteOutput --> Success{Success?}
-    Success -->|Yes| IncrementSuccess[Increment Success Count]
-    Success -->|No| AddFailed[Add to Failed Rows]
-    
-    IncrementSuccess --> NextRow{More<br/>Rows?}
-    AddFailed --> NextRow
-    SkipRow --> NextRow
-    
-    NextRow -->|Yes| IterateRows
-    NextRow -->|No| ReturnResult[Return ProcessingResult]
-    
-    ReturnResult --> DisplaySummary[Display Summary<br/>Total/Success/Failed]
-    DisplaySummary --> End([End])
-    
-    Exit1 --> End
-    
-    style Start fill:#e1f5ff
-    style End fill:#e1f5ff
-    style Process fill:#fff4e1
-    style MergePDFs fill:#ffe1f5
-    style ValidateCLI fill:#e1ffe1
-    style ValidateInteractive fill:#e1ffe1
-    style ReadFile fill:#f0e1ff
-    style FindPDFs fill:#ffe1f0
-```
+---
 
-## Component Architecture
+## Overview
+
+PDF Batch Merger is a desktop application built with Python that merges multiple PDF files based on instructions from CSV or Excel files. The application follows a modular architecture with clear separation of concerns between business logic, user interface, and data processing.
+
+### Key Features
+
+- **GUI Application**: Built with CustomTkinter for a modern, cross-platform interface
+- **License Management**: RSA-signed license validation system
+- **Modular Design**: Clean separation between core logic, UI, and utilities
+- **Comprehensive Testing**: Full test coverage with pytest
+- **Multiple Input Formats**: Supports CSV and Excel files
+- **Flexible PDF Matching**: Case-insensitive filename matching
+
+---
+
+## System Architecture
+
+### High-Level Architecture
 
 ```mermaid
 graph TB
-    subgraph "Entry Points"
+    subgraph "User Interface Layer"
+        GUI[GUI Application<br/>CustomTkinter]
+        CLI[CLI Interface<br/>Optional]
+    end
+    
+    subgraph "Application Layer"
         Main[main.py<br/>Entry Point]
-        CLI[cli/command_line.py<br/>CLI Interface]
-        Interactive[cli/interactive.py<br/>Interactive Interface]
+        License[License Manager<br/>Validation]
     end
     
-    subgraph "Core Processing"
-        Processor[processor.py<br/>process_file<br/>process_row<br/>ProcessingResult]
+    subgraph "Business Logic Layer"
+        Core[Core Module<br/>Business Logic]
+        Processor[Processor<br/>Orchestration]
+        Validator[Validators<br/>Input Validation]
     end
     
-    subgraph "File Operations"
-        FileReader[file_reader.py<br/>read_data_file<br/>read_csv<br/>read_excel<br/>get_file_columns]
-        PDFOps[pdf_operations.py<br/>find_pdf_file<br/>merge_pdfs]
+    subgraph "Data Processing Layer"
+        FileReader[File Reader<br/>CSV/Excel]
+        DataParser[Data Parser<br/>Serial Numbers]
+        PDFOps[PDF Operations<br/>Find & Merge]
     end
     
-    subgraph "Data Processing"
-        DataParser[data_parser.py<br/>parse_serial_numbers]
+    subgraph "Infrastructure Layer"
+        Logger[Logger<br/>Logging System]
+        Exceptions[Custom Exceptions<br/>Error Handling]
     end
     
-    subgraph "Validation"
-        Validators[validators.py<br/>validate_file<br/>validate_folder<br/>validate_paths<br/>validate_serial_number]
-    end
-    
-    subgraph "Supporting Modules"
-        Logger[logger.py<br/>setup_logger<br/>get_logger]
-        Exceptions[exceptions.py<br/>PDFMergerError<br/>FileNotFoundError<br/>InvalidFileFormatError<br/>MissingColumnError<br/>PDFProcessingError<br/>ValidationError]
-    end
-    
-    subgraph "External Libraries"
-        PyPDF[pypdf/PyPDF2<br/>PdfReader<br/>PdfWriter]
-        Pandas[pandas<br/>Excel Reading]
-        CSV[Python csv<br/>CSV Reading]
-    end
-    
-    Main --> CLI
-    Main --> Interactive
-    CLI --> Processor
-    Interactive --> Processor
-    
+    GUI --> Main
+    CLI --> Main
+    Main --> License
+    License --> Core
+    Core --> Processor
+    Processor --> Validator
     Processor --> FileReader
-    Processor --> PDFOps
     Processor --> DataParser
+    Processor --> PDFOps
     Processor --> Logger
-    Processor --> Exceptions
-    
-    FileReader --> CSV
-    FileReader --> Pandas
+    Validator --> Exceptions
     FileReader --> Exceptions
-    FileReader --> Logger
-    
-    PDFOps --> PyPDF
-    PDFOps --> Logger
-    
-    Validators --> FileReader
-    Validators --> Logger
-    Validators --> Exceptions
-    
-    CLI --> Validators
-    Interactive --> Validators
-    
-    style Main fill:#e1f5ff
-    style Processor fill:#fff4e1
-    style FileReader fill:#f0e1ff
-    style PDFOps fill:#ffe1f5
-    style Validators fill:#e1ffe1
-    style Exceptions fill:#ffe1e1
+    PDFOps --> Exceptions
 ```
 
-## Exception Hierarchy
-
-```mermaid
-classDiagram
-    class Exception {
-        <<built-in>>
-    }
-    
-    class PDFMergerError {
-        +str message
-        +__init__(message: str)
-    }
-    
-    class FileNotFoundError {
-        +Path path
-        +str file_type
-        +__init__(path: Path, file_type: str)
-    }
-    
-    class InvalidFileFormatError {
-        +Path file_path
-        +__init__(message: str, file_path: Path)
-    }
-    
-    class MissingColumnError {
-        +str column_name
-        +List[str] available_columns
-        +Path file_path
-        +__init__(column_name: str, available_columns: List[str], file_path: Path)
-    }
-    
-    class PDFProcessingError {
-        +Path pdf_path
-        +str operation
-        +__init__(message: str, pdf_path: Path, operation: str)
-    }
-    
-    class ValidationError {
-        +str field
-        +__init__(message: str, field: str)
-    }
-    
-    Exception <|-- PDFMergerError
-    PDFMergerError <|-- FileNotFoundError
-    PDFMergerError <|-- InvalidFileFormatError
-    PDFMergerError <|-- MissingColumnError
-    PDFMergerError <|-- PDFProcessingError
-    PDFMergerError <|-- ValidationError
-```
-
-## Processing Flow Sequence
+### Component Interaction Flow
 
 ```mermaid
 sequenceDiagram
     participant User
+    participant GUI
     participant Main
-    participant CLI/Interactive
-    participant Validators
+    participant License
+    participant Core
     participant Processor
+    participant Validator
     participant FileReader
-    participant DataParser
     participant PDFOps
-    participant Logger
     
-    User->>Main: Start Application
-    Main->>CLI/Interactive: Route to Mode
+    User->>GUI: Launch Application
+    GUI->>Main: Start Application
+    Main->>License: Check License Status
+    License-->>Main: License Status
     
-    alt CLI Mode
-        CLI/Interactive->>CLI/Interactive: Parse Arguments
-        CLI/Interactive->>Validators: validate_paths()
-        Validators->>FileReader: get_file_columns()
-        Validators-->>CLI/Interactive: Validation Result
-    else Interactive Mode
-        CLI/Interactive->>User: Prompt for File Path
-        User-->>CLI/Interactive: File Path
-        CLI/Interactive->>Validators: validate_file()
-        Validators->>FileReader: get_file_columns()
-        Validators-->>CLI/Interactive: Validation Result
-        CLI/Interactive->>User: Prompt for Source Folder
-        User-->>CLI/Interactive: Source Folder
-        CLI/Interactive->>Validators: validate_folder()
-        Validators-->>CLI/Interactive: Validation Result
-    end
-    
-    CLI/Interactive->>Processor: process_file()
-    Processor->>Logger: Log Start Processing
-    Processor->>FileReader: read_data_file()
-    
-    alt CSV File
-        FileReader->>FileReader: detect_file_type()
-        FileReader->>FileReader: _detect_csv_delimiter()
-        FileReader->>FileReader: read_csv()
-    else Excel File
-        FileReader->>FileReader: detect_file_type()
-        FileReader->>FileReader: read_excel() [pandas]
-    end
-    
-    loop For Each Row
-        FileReader-->>Processor: Row Dictionary
-        Processor->>Processor: process_row()
-        Processor->>DataParser: parse_serial_numbers()
-        DataParser-->>Processor: List of Filenames
-        
-        loop For Each Filename
+    alt License Valid
+        Main->>GUI: Launch GUI
+        User->>GUI: Select Files & Run Merge
+        GUI->>Core: run_merge()
+        Core->>Validator: Validate Inputs
+        Validator-->>Core: Validation Result
+        Core->>Processor: process_file()
+        Processor->>FileReader: read_data_file()
+        FileReader-->>Processor: DataFrame
+        loop For Each Row
             Processor->>PDFOps: find_pdf_file()
-            PDFOps->>PDFOps: Search Source Folder
-            PDFOps-->>Processor: PDF Path or None
+            PDFOps-->>Processor: PDF Paths
+            Processor->>PDFOps: merge_pdfs()
+            PDFOps-->>Processor: Merged PDF
         end
-        
-        Processor->>PDFOps: merge_pdfs()
-        PDFOps->>PDFOps: Create PdfWriter
-        loop For Each PDF
-            PDFOps->>PDFOps: Read PDF with PdfReader
-            PDFOps->>PDFOps: Add Pages to Writer
-        end
-        PDFOps->>PDFOps: Write Merged PDF
-        PDFOps-->>Processor: Success/Failure
-        Processor->>Logger: Log Result
+        Processor-->>Core: ProcessingResult
+        Core-->>GUI: Result Summary
+        GUI-->>User: Display Results
+    else License Invalid
+        Main->>GUI: Show Error & Exit
     end
-    
-    Processor-->>CLI/Interactive: ProcessingResult
-    CLI/Interactive->>User: Display Summary
 ```
 
-## Module Dependencies
+---
+
+## Component Structure
+
+### Directory Structure
+
+```
+files_unifeder/
+├── main.py                      # Application entry point
+├── pdf_merger/                   # Main package
+│   ├── __init__.py              # Public API exports
+│   ├── config.py                # Configuration settings
+│   ├── logger.py                # Logging configuration
+│   ├── exceptions.py            # Custom exception classes
+│   │
+│   ├── core/                    # Business logic layer
+│   │   ├── merger.py           # Core merge orchestration
+│   │   └── reporter.py         # Result formatting
+│   │
+│   ├── processor.py            # Main processing orchestration
+│   ├── validators.py            # Input validation functions
+│   ├── data_parser.py           # Serial number parsing
+│   ├── file_reader.py           # CSV/Excel file reading
+│   ├── pdf_operations.py        # PDF finding and merging
+│   │
+│   ├── ui/                      # User interface
+│   │   ├── app.py              # CustomTkinter GUI application
+│   │   └── __init__.py
+│   │
+│   └── licensing/               # License management
+│       ├── license_manager.py  # License validation
+│       ├── license_model.py    # License data model
+│       └── license_signer.py   # RSA signing/verification
+│
+├── cli/                         # Command-line interfaces (optional)
+│   ├── command_line.py         # CLI with arguments
+│   └── interactive.py          # Interactive prompts
+│
+├── tests/                       # Test suite
+│   ├── test_*.py               # Unit tests for each module
+│   └── README.md               # Testing documentation
+│
+├── tools/                       # Development tools
+│   └── license_generator.py    # License generation tool
+│
+└── requirements.txt            # Python dependencies
+```
+
+### Core Components
+
+#### 1. Entry Point (`main.py`)
+
+- **Responsibility**: Application bootstrap and license checking
+- **Flow**: 
+  1. Initialize logging
+  2. Check license status
+  3. Launch GUI if license valid
+  4. Handle license errors gracefully
+
+```mermaid
+flowchart TD
+    Start([Application Start]) --> Init[Initialize Logging]
+    Init --> CheckLicense[Check License Status]
+    CheckLicense --> Valid{License Valid?}
+    Valid -->|Yes| LaunchGUI[Launch GUI]
+    Valid -->|Expired| ShowWarning[Show Warning<br/>Launch GUI with Restrictions]
+    Valid -->|Invalid| ShowError[Show Error<br/>Exit Application]
+    LaunchGUI --> End([Application Running])
+    ShowWarning --> End
+    ShowError --> Exit([Exit])
+```
+
+#### 2. Core Module (`pdf_merger/core/`)
+
+- **`merger.py`**: High-level merge orchestration
+  - Coordinates validation, processing, and result formatting
+  - Decouples UI from business logic
+  
+- **`reporter.py`**: Result formatting
+  - Formats processing results for display
+  - Generates summary and detailed reports
+
+#### 3. Processor (`pdf_merger/processor.py`)
+
+- **Responsibility**: Main processing orchestration
+- **Key Functions**:
+  - `process_file()`: Process entire CSV/Excel file
+  - `process_row()`: Process single row
+  - Returns `ProcessingResult` with statistics
+
+#### 4. Validators (`pdf_merger/validators.py`)
+
+- **Responsibility**: Input validation
+- **Validates**:
+  - File existence and format
+  - Folder existence
+  - Required columns in data files
+  - Serial number format (GRNW_ prefix)
+  - Complete path sets
+
+#### 5. File Reader (`pdf_merger/file_reader.py`)
+
+- **Responsibility**: Reading CSV and Excel files
+- **Features**:
+  - Auto-detects file type (.csv, .xlsx, .xls)
+  - Auto-detects CSV delimiter (comma, semicolon, tab)
+  - Unified interface for all file types
+  - Returns pandas DataFrame
+
+#### 6. Data Parser (`pdf_merger/data_parser.py`)
+
+- **Responsibility**: Parsing serial numbers from strings
+- **Features**:
+  - Handles comma-separated values
+  - Strips whitespace
+  - Validates format
+
+#### 7. PDF Operations (`pdf_merger/pdf_operations.py`)
+
+- **Responsibility**: PDF file operations
+- **Features**:
+  - `find_pdf_file()`: Case-insensitive PDF finding
+  - `merge_pdfs()`: Merging multiple PDFs into one
+  - Lazy loading of PDF libraries (pypdf)
+
+#### 8. UI Module (`pdf_merger/ui/app.py`)
+
+- **Responsibility**: GUI application
+- **Technology**: CustomTkinter
+- **Features**:
+  - File/folder selection dialogs
+  - Real-time progress logging
+  - Result display
+  - License status indicator
+
+#### 9. Licensing System (`pdf_merger/licensing/`)
+
+- **`license_manager.py`**: License validation and status checking
+- **`license_model.py`**: License data structure
+- **`license_signer.py`**: RSA signature generation and verification
 
 ```mermaid
 graph LR
-    subgraph "pdf_merger package"
-        A[processor.py] --> B[file_reader.py]
-        A --> C[pdf_operations.py]
-        A --> D[data_parser.py]
-        A --> E[logger.py]
-        A --> F[exceptions.py]
-        
-        B --> F
-        B --> E
-        
-        C --> E
-        
-        G[validators.py] --> B
-        G --> E
-        G --> F
-        
-        H[__init__.py] --> A
-        H --> B
-        H --> C
-        H --> D
-        H --> G
-        H --> F
+    subgraph "License Generation"
+        PrivateKey[Private Key<br/>tools/private_key.pem]
+        Generator[License Generator<br/>tools/license_generator.py]
+        LicenseFile[License File<br/>license.json]
     end
     
-    subgraph "cli package"
-        I[command_line.py] --> H
-        I --> G
-        I --> E
-        
-        J[interactive.py] --> H
-        J --> G
-        J --> E
+    subgraph "Application"
+        PublicKey[Public Key<br/>Embedded in App]
+        LicenseMgr[License Manager]
+        Validation[Signature Verification]
     end
     
-    K[main.py] --> I
-    K --> J
-    
-    style A fill:#fff4e1
-    style B fill:#f0e1ff
-    style C fill:#ffe1f5
-    style G fill:#e1ffe1
-    style F fill:#ffe1e1
+    PrivateKey --> Generator
+    Generator --> LicenseFile
+    PublicKey --> LicenseMgr
+    LicenseFile --> LicenseMgr
+    LicenseMgr --> Validation
+    Validation --> Status[License Status]
 ```
+
+---
+
+## Data Flow
+
+### Processing Flow
+
+```mermaid
+flowchart TD
+    Start([User Clicks Run Merge]) --> Validate[Validate Inputs]
+    Validate -->|Invalid| Error[Show Error]
+    Validate -->|Valid| ReadFile[Read CSV/Excel File]
+    ReadFile --> ParseRows[Parse Rows]
+    ParseRows --> Loop{For Each Row}
+    Loop --> ParseSerials[Parse Serial Numbers]
+    ParseSerials --> FindPDFs[Find PDF Files]
+    FindPDFs --> CheckFound{All PDFs Found?}
+    CheckFound -->|No| Warn[Log Warning<br/>Continue with Found]
+    CheckFound -->|Yes| Merge[Merge PDFs]
+    Warn --> Merge
+    Merge --> Save[Save Merged PDF]
+    Save --> NextRow{More Rows?}
+    NextRow -->|Yes| Loop
+    NextRow -->|No| Summary[Generate Summary]
+    Summary --> Display[Display Results]
+    Error --> End([End])
+    Display --> End
+```
+
+### File Processing Pipeline
+
+```mermaid
+graph TB
+    subgraph "Input"
+        CSV[CSV/Excel File<br/>serial_numbers column]
+        PDFs[PDF Files Folder]
+    end
+    
+    subgraph "Processing"
+        Read[File Reader<br/>Detect Type & Read]
+        Parse[Data Parser<br/>Parse Serial Numbers]
+        Find[PDF Operations<br/>Find PDF Files]
+        Merge[PDF Operations<br/>Merge PDFs]
+    end
+    
+    subgraph "Output"
+        Merged[Merged PDFs<br/>merged_row_N.pdf]
+        Log[Processing Log<br/>Summary & Errors]
+    end
+    
+    CSV --> Read
+    Read --> Parse
+    Parse --> Find
+    PDFs --> Find
+    Find --> Merge
+    Merge --> Merged
+    Merge --> Log
+```
+
+---
+
+## Architecture Principles
+
+1. **Separation of Concerns**: Clear boundaries between UI, business logic, and data processing
+2. **Modularity**: Each module has a single, well-defined responsibility
+3. **Testability**: Components are designed to be easily testable with mocks
+4. **Extensibility**: New features can be added without modifying core logic
+5. **Error Handling**: Comprehensive exception hierarchy for clear error messages
+6. **Logging**: Structured logging throughout for debugging and monitoring
+
+---
+
+## Additional Resources
+
+- **Installation Guide**: See `INSTALLATION.md`
+- **Testing Guide**: See `TESTING.md`
+- **User Guide**: See `docs/README_USER.md`
+- **Build Guide**: See `BUILD.md` for packaging instructions
+- **License Tools**: See `tools/README.md` for license generation
+
+---
+
+## Version
+
+Current version: **1.0.0**

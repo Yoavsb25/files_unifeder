@@ -297,3 +297,38 @@ class TestGetFileColumns:
         except Exception:
             # Other exceptions are also acceptable for invalid data
             pass
+    
+    @patch('pdf_merger.file_reader.pd', None)
+    def test_get_file_columns_excel_no_pandas(self, tmp_path):
+        """Test getting columns from Excel file when pandas is not available."""
+        file_path = tmp_path / "test.xlsx"
+        file_path.touch()
+        
+        # Import the module to patch pd
+        import pdf_merger.file_reader as file_reader_module
+        original_pd = file_reader_module.pd
+        
+        try:
+            file_reader_module.pd = None
+            
+            with pytest.raises(ImportError) as exc_info:
+                get_file_columns(file_path)
+            
+            assert "pandas and openpyxl are required" in str(exc_info.value)
+        finally:
+            file_reader_module.pd = original_pd
+    
+    @patch('pdf_merger.file_reader.pd.read_excel')
+    def test_get_file_columns_excel_import_error_re_raised(self, mock_read_excel, tmp_path):
+        """Test that ImportError is re-raised when reading Excel file."""
+        file_path = tmp_path / "test.xlsx"
+        file_path.touch()
+        
+        # Make read_excel raise ImportError
+        mock_read_excel.side_effect = ImportError("pandas not installed")
+        
+        # ImportError should be re-raised, not wrapped in InvalidFileFormatError
+        with pytest.raises(ImportError) as exc_info:
+            get_file_columns(file_path)
+        
+        assert "pandas not installed" in str(exc_info.value)
