@@ -186,7 +186,8 @@ class TestMergePdfs:
         assert mock_writer_instance.write.called
     
     @patch('pdf_merger.pdf_operations._get_pdf_libraries')
-    def test_merge_pdfs_empty_list(self, mock_get_libraries, tmp_path):
+    @patch('pdf_merger.pdf_operations.logger')
+    def test_merge_pdfs_empty_list(self, mock_logger, mock_get_libraries, tmp_path):
         """Test merging with empty PDF list."""
         output_path = tmp_path / "merged.pdf"
         
@@ -194,6 +195,7 @@ class TestMergePdfs:
         
         assert result is False
         mock_get_libraries.assert_not_called()
+        mock_logger.warning.assert_called_once()
     
     @patch('pdf_merger.pdf_operations._get_pdf_libraries')
     def test_merge_pdfs_read_error(self, mock_get_libraries, tmp_path):
