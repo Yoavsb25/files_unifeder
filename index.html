@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Merger</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- SF Pro Font (using system fonts as fallback) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="canvas">
+        <div class="main-card">
+            <!-- Header Bar -->
+            <div class="header-bar">
+                <div class="app-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 4h12v12H4z"/>
+                        <path d="M8 8h12v12H8z" opacity="0.7"/>
+                        <path d="M12 12h8v8h-8z" opacity="0.5"/>
+                        <path d="M4 8h8M8 4v8"/>
+                    </svg>
+                </div>
+                <h1 class="app-name">PDF Merger</h1>
+            </div>
+
+            <!-- Main Content -->
+            <div class="content">
+                <!-- Section 1: Data File -->
+                <section class="section">
+                    <div class="section-header">
+                        <span class="section-number">1</span>
+                        <h2 class="section-title">Data File</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="file-input-row">
+                            <div class="file-input-wrapper">
+                                <input type="text" id="dataFileInput" class="file-input" placeholder="Select a CSV or Excel file" readonly>
+                                <svg class="input-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M4 2h8l2 2v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/>
+                                    <path d="M4 2v4h8V2"/>
+                                </svg>
+                            </div>
+                            <button type="button" class="btn-secondary" id="chooseDataFileBtn">Choose File…</button>
+                            <input type="file" id="dataFile" accept=".csv,.xlsx,.xls" style="display: none;">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 2: PDF Folder -->
+                <section class="section">
+                    <div class="section-header">
+                        <span class="section-number">2</span>
+                        <h2 class="section-title">PDF Folder</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="file-input-row">
+                            <div class="file-input-wrapper">
+                                <input type="text" id="pdfFolderInput" class="file-input" placeholder="Select folder containing source PDFs" readonly>
+                                <svg class="input-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3z"/>
+                                    <path d="M2 5h12"/>
+                                </svg>
+                            </div>
+                            <button type="button" class="btn-secondary" id="choosePdfFolderBtn">Choose Folder…</button>
+                            <input type="file" id="pdfFolder" webkitdirectory directory multiple style="display: none;">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 3: Merge Options -->
+                <section class="section">
+                    <div class="section-header">
+                        <span class="section-number">3</span>
+                        <h2 class="section-title">Merge Options</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="mode-toggle">
+                            <div class="segmented-control">
+                                <button type="button" class="segment active" data-mode="interactive" id="interactiveMode">Interactive Mode</button>
+                                <button type="button" class="segment" data-mode="command" id="commandMode">Command-Line Mode</button>
+                            </div>
+                        </div>
+                        <div class="options">
+                            <div class="toggle-row">
+                                <label class="toggle-label">
+                                    <input type="checkbox" class="toggle-checkbox" id="fuzzyMatching">
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-text">Enable Fuzzy Matching</span>
+                                </label>
+                            </div>
+                            <div class="toggle-row">
+                                <label class="toggle-label">
+                                    <input type="checkbox" class="toggle-checkbox" id="overwriteFiles">
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-text">Overwrite Existing Files</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 4: Output Settings -->
+                <section class="section">
+                    <div class="section-header">
+                        <span class="section-number">4</span>
+                        <h2 class="section-title">Output Settings</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="file-input-row">
+                            <div class="file-input-wrapper">
+                                <input type="text" id="outputFolderInput" class="file-input" placeholder="Files will be downloaded to your default download folder" readonly value="Downloads (browser default)">
+                                <svg class="input-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3z"/>
+                                    <path d="M2 5h12"/>
+                                </svg>
+                            </div>
+                            <button type="button" class="btn-secondary" id="chooseOutputFolderBtn" style="display: none;">Choose Folder…</button>
+                        </div>
+                        <div class="filename-pattern-row">
+                            <input type="text" id="filenamePattern" class="filename-input" placeholder="merged_{row_name}.pdf" value="merged_row_{index}.pdf">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 5: Processing Status (Hidden by default) -->
+                <section class="section" id="processingSection" style="display: none;">
+                    <div class="section-header">
+                        <span class="section-number">5</span>
+                        <h2 class="section-title">Processing Status</h2>
+                    </div>
+                    <div class="section-content">
+                        <div class="progress-info">
+                            <span id="progressText">Merging PDFs… 0 of 0 completed</span>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill"></div>
+                            </div>
+                        </div>
+                        <div class="log-panel" id="logPanel"></div>
+                    </div>
+                </section>
+
+                <!-- Summary Panel (Right-aligned) -->
+                <div class="summary-panel" id="summaryPanel" style="display: none;">
+                    <div class="summary-row">
+                        <svg class="summary-icon success" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 4L6 11l-3-3"/>
+                        </svg>
+                        <span class="summary-label">Success</span>
+                        <span class="summary-value" id="successCount">0</span>
+                    </div>
+                    <div class="summary-row">
+                        <svg class="summary-icon error" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4l8 8M12 4l-8 8"/>
+                        </svg>
+                        <span class="summary-label">Failed</span>
+                        <span class="summary-value" id="failedCount">0</span>
+                    </div>
+                    <div class="summary-row">
+                        <svg class="summary-icon skipped" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 8h8"/>
+                        </svg>
+                        <span class="summary-label">Skipped</span>
+                        <span class="summary-value" id="skippedCount">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Primary CTA -->
+            <div class="cta-container">
+                <button type="button" class="btn-primary" id="runMergeBtn">
+                    Run Merge
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

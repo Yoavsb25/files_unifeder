@@ -285,3 +285,64 @@ class TestProcessFile:
         mock_process_row.assert_called_once()
         call_args = mock_process_row.call_args
         assert call_args[0][1] == "GRNW_000103851"  # Check serial_numbers_str argument
+    
+    @patch('pdf_merger.processor.merge_pdfs')
+    @patch('pdf_merger.processor.find_pdf_file')
+    @patch('pdf_merger.processor.parse_serial_numbers')
+    @patch('pdf_merger.processor.validate_serial_number')
+    @patch('pdf_merger.processor.logger')
+    def test_process_row_invalid_serial_numbers(self, mock_logger, mock_validate, mock_parse, mock_find, mock_merge, tmp_path):
+        """Test processing row with invalid serial numbers logs warnings but continues."""
+        source_folder = tmp_path / "source"
+        output_folder = tmp_path / "output"
+        source_folder.mkdir()
+        output_folder.mkdir()
+        
+        # Setup: some valid, some invalid serial numbers
+        mock_parse.return_value = ["GRNW_000103851", "INVALID_123", "grnw_000103852"]
+        mock_validate.side_effect = [True, False, True]  # Second one is invalid
+        
+        pdf1 = source_folder / "GRNW_000103851.pdf"
+        pdf2 = source_folder / "grnw_000103852.pdf"
+        pdf1.write_bytes(b"fake pdf")
+        pdf2.write_bytes(b"fake pdf")
+        
+        mock_find.side_effect = [pdf1, None, pdf2]
+        mock_merge.return_value = True
+        
+        result = process_row(0, "GRNW_000103851,INVALID_123,grnw_000103852", source_folder, output_folder)
+        
+        # Should still succeed
+        assert result is True
+        
+        # Should log warnings about invalid serial numbers
+        assert mock_logger.warning.called
+        warning_calls = [str(call) for call in mock_logger.warning.call_args_list]
+        assert any("Invalid serial number format" in str(call) for call in warning_calls)
+        assert any("Expected format: GRNW_XXXXX" in str(call) for call in warning_calls)
+    
+    @patch('pdf_merger.processor.process_row')
+    @patch('pdf_merger.processor.read_data_file')
+    @patch('pdf_merger.processor.logger')
+    def test_process_file_unexpected_exception(self, mock_logger, mock_read, mock_process_row, tmp_path):
+        """Test processing file when an unexpected exception occurs."""
+        file_path = tmp_path / "data.csv"
+        source_folder = tmp_path / "source"
+        output_folder = tmp_path / "output"
+        
+        source_folder.mkdir()
+        
+        # Make read_data_file raise an unexpected exception
+        mock_read.side_effect = RuntimeError("Unexpected error")
+        
+        result = process_file(file_path, source_folder, output_folder)
+        
+        # Should return a result with zero rows
+        assert result.total_rows == 0
+        assert result.successful_merges == 0
+        assert result.failed_rows == []
+        
+        # Should log the error
+        assert mock_logger.error.called
+        error_calls = [str(call) for call in mock_logger.error.call_args_list]
+        assert any("Unexpected error processing file" in str(call) for call in error_calls)

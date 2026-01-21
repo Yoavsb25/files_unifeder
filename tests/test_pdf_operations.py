@@ -5,7 +5,7 @@ Unit tests for pdf_operations module.
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
-from pdf_merger.pdf_operations import find_pdf_file, merge_pdfs
+from pdf_merger.pdf_operations import find_pdf_file, merge_pdfs, _get_pdf_libraries
 from pdf_merger.enums import PDF_FILE_EXTENSION
 
 
@@ -86,6 +86,63 @@ class TestFindPdfFile:
         assert result is not None
         assert result.stem.lower() == pdf_file.stem.lower()
         assert result.exists()
+    
+    def test_find_pdf_case_insensitive_glob_match(self, tmp_path):
+        """Test finding PDF with case-insensitive glob matching."""
+        folder = tmp_path / "pdfs"
+        folder.mkdir()
+        # Create file with different case
+        pdf_file = folder / "testfile.PDF"
+        pdf_file.write_bytes(b"fake pdf content")
+        
+        # Search with lowercase
+        result = find_pdf_file(folder, "testfile")
+        
+        assert result is not None
+        assert result.name.lower() == pdf_file.name.lower()
+    
+    def test_find_pdf_glob_matches_name_with_extension(self, tmp_path):
+        """Test glob matching when filename includes extension in search."""
+        folder = tmp_path / "pdfs"
+        folder.mkdir()
+        pdf_file = folder / "GRNW_000103851.pdf"
+        pdf_file.write_bytes(b"fake pdf content")
+        
+        # Search with .pdf extension
+        result = find_pdf_file(folder, "grnw_000103851.pdf")
+        
+        assert result is not None
+        assert result.name.lower() == pdf_file.name.lower()
+    
+    def test_find_pdf_glob_matches_exact_name(self, tmp_path):
+        """Test glob matching when filename matches exactly (case-insensitive)."""
+        folder = tmp_path / "pdfs"
+        folder.mkdir()
+        # Create file with different case than search
+        pdf_file = folder / "TestFile.PDF"
+        pdf_file.write_bytes(b"fake pdf content")
+        
+        # Search with lowercase - should match via glob
+        result = find_pdf_file(folder, "testfile")
+        
+        assert result is not None
+        # Should match via the glob loop (line 70-71)
+        assert result.name.lower() == pdf_file.name.lower()
+    
+    def test_find_pdf_glob_matches_stem_only(self, tmp_path):
+        """Test glob matching when only stem matches (line 73-74)."""
+        folder = tmp_path / "pdfs"
+        folder.mkdir()
+        # Create file
+        pdf_file = folder / "GRNW_000103851.PDF"
+        pdf_file.write_bytes(b"fake pdf content")
+        
+        # Search without extension - should match via stem check
+        result = find_pdf_file(folder, "grnw_000103851")
+        
+        assert result is not None
+        # Should match via the stem check (line 73-74)
+        assert result.stem.lower() == pdf_file.stem.lower()
 
 
 class TestMergePdfs:
@@ -203,3 +260,72 @@ class TestMergePdfs:
         
         assert result is True
         assert mock_writer_instance.add_page.call_count == 1
+    
+    @patch('pdf_merger.pdf_operations._get_pdf_libraries')
+    def test_merge_pdfs_import_error(self, mock_get_libraries, tmp_path):
+        """Test merging when ImportError is raised."""
+        output_path = tmp_path / "merged.pdf"
+        pdf_paths = [tmp_path / "file1.pdf"]
+        pdf_paths[0].write_bytes(b"fake pdf content")
+        
+        mock_get_libraries.side_effect = ImportError("pypdf not found")
+        
+        result = merge_pdfs(pdf_paths, output_path)
+        
+        assert result is False
+
+
+class TestGetPdfLibraries:
+    """Test cases for _get_pdf_libraries function."""
+    
+    def test_get_pdf_libraries_imports_pypdf(self):
+        """Test that _get_pdf_libraries imports pypdf when available."""
+        import pdf_merger.pdf_operations as pdf_ops
+        
+        # Reset the global variables
+        original_writer = pdf_ops._PdfWriter
+        original_reader = pdf_ops._PdfReader
+        
+        try:
+            pdf_ops._PdfWriter = None
+            pdf_ops._PdfReader = None
+            
+            # Mock the pypdf import
+            with patch('pypdf.PdfWriter', MagicMock()) as mock_w, \
+                 patch('pypdf.PdfReader', MagicMock()) as mock_r:
+                writer, reader = _get_pdf_libraries()
+                
+                # Should have been set
+                assert pdf_ops._PdfWriter is not None
+                assert pdf_ops._PdfReader is not None
+        finally:
+            pdf_ops._PdfWriter = original_writer
+            pdf_ops._PdfReader = original_reader
+    
+    
+    def test_get_pdf_libraries_uses_cached_imports(self):
+        """Test that _get_pdf_libraries uses cached imports on subsequent calls."""
+        import pdf_merger.pdf_operations as pdf_ops
+        
+        # Set up cached values
+        original_writer = pdf_ops._PdfWriter
+        original_reader = pdf_ops._PdfReader
+        
+        try:
+            mock_writer = MagicMock()
+            mock_reader = MagicMock()
+            pdf_ops._PdfWriter = mock_writer
+            pdf_ops._PdfReader = mock_reader
+            
+            # Call should return cached values without importing
+            with patch('pypdf.PdfWriter') as mock_import:
+                writer, reader = _get_pdf_libraries()
+                
+                # Should not call import since values are cached
+                mock_import.assert_not_called()
+                assert writer is mock_writer
+                assert reader is mock_reader
+        finally:
+            # Restore original values
+            pdf_ops._PdfWriter = original_writer
+            pdf_ops._PdfReader = original_reader
