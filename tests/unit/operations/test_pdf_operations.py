@@ -345,7 +345,11 @@ class TestFindSourceFile:
         
         result = find_source_file(folder, "GRNW_000103851")
         
-        assert result == pdf_file
+        assert result is not None
+        assert result.exists()
+        # On case-insensitive filesystems, path might differ in case
+        assert result.name.lower() == pdf_file.name.lower()
+        assert result.stem.lower() == "grnw_000103851"
     
     def test_find_excel_xlsx_file(self, tmp_path):
         """Test finding Excel .xlsx file."""
@@ -356,7 +360,11 @@ class TestFindSourceFile:
         
         result = find_source_file(folder, "GRNW_000103851")
         
-        assert result == excel_file
+        assert result is not None
+        assert result.exists()
+        # On case-insensitive filesystems, path might differ in case
+        assert result.name.lower() == excel_file.name.lower()
+        assert result.stem.lower() == "grnw_000103851"
     
     def test_find_excel_xls_file(self, tmp_path):
         """Test finding Excel .xls file."""
@@ -367,7 +375,11 @@ class TestFindSourceFile:
         
         result = find_source_file(folder, "GRNW_000103851")
         
-        assert result == excel_file
+        assert result is not None
+        assert result.exists()
+        # On case-insensitive filesystems, path might differ in case
+        assert result.name.lower() == excel_file.name.lower()
+        assert result.stem.lower() == "grnw_000103851"
     
     def test_find_source_file_prefers_pdf(self, tmp_path):
         """Test that find_source_file finds PDF when both PDF and Excel exist."""
