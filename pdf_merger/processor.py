@@ -54,7 +54,7 @@ def process_row(row_index: int, serial_numbers_str: str, source_folder: Path,
         logger.warning(f"Row {row_index + 1}: No serial numbers found, skipping...")
         return False
     
-    valid_serial_numbers = [serial_number]
+    valid_serial_numbers = []
     for serial_number in all_serial_numbers:
         if validate_serial_number(serial_number):
             valid_serial_numbers.append(serial_number)
