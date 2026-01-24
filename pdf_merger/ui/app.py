@@ -137,7 +137,7 @@ class PDFMergerApp(ctk.CTk):
         
         ctk.CTkLabel(
             pdf_frame,
-            text="PDF Directory:",
+            text="Source Directory:",
             font=ctk.CTkFont(size=12, weight="bold")
         ).pack(anchor="w", pady=(0, 5))
         
@@ -303,16 +303,16 @@ class PDFMergerApp(ctk.CTk):
                 self._show_error(f"Invalid file: {e}")
     
     def _select_pdf_directory(self):
-        """Open directory dialog to select PDF directory."""
-        dir_path = filedialog.askdirectory(title="Select PDF Directory")
+        """Open directory dialog to select source directory (PDF and Excel files)."""
+        dir_path = filedialog.askdirectory(title="Select Source Directory (PDF and Excel files)")
         
         if dir_path:
             path = Path(dir_path)
             try:
-                validate_folder(path, "PDF")
+                validate_folder(path, "Source")
                 self.pdf_dir_path = path
                 self.pdf_dir_label.configure(text=str(path))
-                self._log(f"Selected PDF directory: {path}")
+                self._log(f"Selected source directory: {path}")
                 self._update_ui_state()
             except PDFMergerError as e:
                 self._log(f"Error: {e}")
@@ -367,7 +367,7 @@ class PDFMergerApp(ctk.CTk):
         self._log("Starting merge operation...")
         self._log("=" * 60)
         self._log(f"Input file: {self.input_file_path}")
-        self._log(f"PDF directory: {self.pdf_dir_path}")
+        self._log(f"Source directory: {self.pdf_dir_path}")
         self._log(f"Output directory: {self.output_dir_path}")
         self._log("")
         

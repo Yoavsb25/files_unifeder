@@ -8,7 +8,7 @@ APP_VERSION = '1.0.0'  # Application version for licensing and display
 
 # Import main functions for easy access
 from .processor import process_file, ProcessingResult
-from .pdf_operations import find_pdf_file, merge_pdfs
+from .pdf_operations import find_pdf_file, find_source_file, merge_pdfs
 from .data_parser import split_serial_numbers
 from .file_reader import read_data_file, get_file_columns
 from .validators import validate_file, validate_folder, validate_paths, validate_serial_number
@@ -30,6 +30,7 @@ __all__ = [
     'ProcessingResult',
     # PDF operations (useful for external use)
     'find_pdf_file',
+    'find_source_file',
     'merge_pdfs',
     # Data parsing (useful for external use)
     'split_serial_numbers',

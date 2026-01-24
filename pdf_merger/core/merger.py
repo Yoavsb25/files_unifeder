@@ -24,7 +24,7 @@ def run_merge(
     
     Args:
         input_file: Path to CSV or Excel file
-        pdf_dir: Path to folder containing PDF files
+        pdf_dir: Path to folder containing PDF and Excel files
         output_dir: Path to output folder
         required_column: Name of the column containing serial numbers
         
@@ -33,7 +33,7 @@ def run_merge(
     """
     logger.info(f"Starting merge operation")
     logger.info(f"  Input file: {input_file}")
-    logger.info(f"  PDF directory: {pdf_dir}")
+    logger.info(f"  Source directory: {pdf_dir}")
     logger.info(f"  Output directory: {output_dir}")
     
     try:

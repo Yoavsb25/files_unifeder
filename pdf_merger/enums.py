@@ -9,6 +9,9 @@ CSV_FILE_EXTENSIONS = {'.csv'}
 PDF_FILE_EXTENSIONS = {'.pdf'}
 PDF_FILE_EXTENSION = '.pdf'  # Single extension string for string operations
 
+# Source file extensions (files that can be merged - PDFs and Excel files)
+SOURCE_FILE_EXTENSIONS = PDF_FILE_EXTENSIONS | EXCEL_FILE_EXTENSIONS
+
 # File Types
 FILE_TYPE_EXCEL = 'excel'
 FILE_TYPE_CSV = 'csv'

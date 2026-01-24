@@ -18,7 +18,7 @@ The PDF Batch Merger project uses **pytest** as the testing framework with compr
 
 ### Test Statistics
 
-- **Total Tests**: 95+ tests covering all major functionality
+- **Total Tests**: 100+ tests covering all major functionality including Excel file support
 - **Test Framework**: pytest 7.0.0+
 - **Coverage Tool**: pytest-cov 4.0.0+
 - **Coverage Goal**: >80% overall, 100% for critical functions
@@ -40,16 +40,35 @@ The PDF Batch Merger project uses **pytest** as the testing framework with compr
 ```
 tests/
 ├── __init__.py
-├── test_data_parser.py      # Serial number parsing tests
-├── test_validators.py        # Validation function tests
-├── test_file_reader.py       # CSV/Excel reading tests
-├── test_pdf_operations.py   # PDF operations tests
-├── test_processor.py        # Main processing tests
-├── test_exceptions.py       # Exception class tests
-├── test_logger.py           # Logging tests
-├── test_licensing.py        # License system tests
-├── test_ui.py               # UI component tests
-└── README.md                # Additional test documentation
+├── README.md                # Test documentation
+│
+└── unit/                    # Unit tests organized by category
+    ├── data/                # Data processing tests
+    │   ├── test_data_parser.py      # Serial number parsing
+    │   ├── test_file_reader.py      # CSV/Excel reading
+    │   └── test_validators.py       # Validation functions
+    │
+    ├── operations/          # Operations tests
+    │   ├── test_pdf_operations.py   # PDF/Excel finding and merging
+    │   ├── test_excel_converter.py  # Excel to PDF conversion
+    │   └── test_processor.py        # Main processing
+    │
+    ├── core/                # Core module tests
+    │   ├── test_core.py             # Core business logic
+    │   └── test_core_init.py        # Module exports
+    │
+    ├── ui/                  # UI tests
+    │   ├── test_ui.py               # GUI application
+    │   └── test_ui_init.py          # Module exports
+    │
+    ├── licensing/           # Licensing tests
+    │   ├── test_licensing.py        # License system
+    │   └── test_licensing_init.py   # Module exports
+    │
+    └── utils/               # Utility tests
+        ├── test_logger.py           # Logging
+        ├── test_config.py            # Configuration
+        └── test_exceptions.py       # Exception classes
 ```
 
 ### Test File Organization
@@ -268,6 +287,7 @@ def test_process_file_complete_workflow(tmp_path):
 - Tests multiple components together
 - Uses real file system (via `tmp_path` fixture)
 - Verifies end-to-end workflows
+- Can test PDF + Excel mixed merging scenarios
 
 ### 3. Mock Tests
 
@@ -483,6 +503,20 @@ pip install pypdf
 - ✅ Module can be imported without pypdf
 - ✅ Tests can run without pypdf (using mocks)
 - ✅ Only fails if `merge_pdfs()` is called without pypdf installed AND without mocking
+
+### Issue: Excel conversion library errors
+
+**Problem**: Tests fail with Excel conversion import errors.
+
+**Solution:** Excel conversion uses openpyxl and reportlab. Most tests use mocks, but if you need real Excel testing:
+
+```bash
+pip install openpyxl reportlab
+```
+
+**Note**: Excel conversion tests mock openpyxl and reportlab by default:
+- ✅ Tests can run without openpyxl/reportlab (using mocks)
+- ✅ Only fails if `convert_excel_to_pdf()` is called without libraries installed AND without mocking
 
 ### Issue: Tests fail with "file not found"
 

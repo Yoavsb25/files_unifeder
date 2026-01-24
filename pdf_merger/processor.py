@@ -3,11 +3,13 @@ Processor module.
 Main orchestration logic for processing files and merging PDFs.
 """
 
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-from .pdf_operations import find_pdf_file, merge_pdfs
+from .pdf_operations import find_source_file, merge_pdfs
+from .excel_converter import convert_excel_to_pdf
 from .data_parser import (
     split_serial_numbers,
     deduplicate_serial_numbers,
@@ -16,7 +18,7 @@ from .data_parser import (
 from .file_reader import read_data_file
 from .logger import get_logger
 from .exceptions import PDFMergerError, InvalidFileFormatError
-from .enums import DEFAULT_SERIAL_NUMBERS_COLUMN, OUTPUT_FILENAME_PATTERN
+from .enums import DEFAULT_SERIAL_NUMBERS_COLUMN, OUTPUT_FILENAME_PATTERN, EXCEL_FILE_EXTENSIONS
 from .validators import validate_serial_number
 
 logger = get_logger("processor")
@@ -38,12 +40,12 @@ class ProcessingResult:
 def process_row(row_index: int, serial_numbers_str: str, source_folder: Path, 
                 output_folder: Path) -> bool:
     """
-    Process a single row: find PDFs and merge them.
+    Process a single row: find PDFs and Excel files, convert Excel to PDF, and merge them.
     
     Args:
         row_index: Index of the row (0-based, for naming output file)
         serial_numbers_str: Comma-separated filenames from the serial_numbers column
-        source_folder: Folder containing the PDF files
+        source_folder: Folder containing the PDF and Excel files
         output_folder: Folder where merged PDFs will be saved
         
     Returns:
@@ -70,41 +72,83 @@ def process_row(row_index: int, serial_numbers_str: str, source_folder: Path,
     
     logger.info(f"Row {row_index + 1}: Processing serial numbers: {', '.join(normalized_serial_numbers)}")
     
-    pdf_paths = []
+    # Find all source files (PDFs and Excel files)
+    source_files = []
     for serial_number in normalized_serial_numbers:
-        pdf_path = find_pdf_file(source_folder, serial_number)
-        if pdf_path:
-            pdf_paths.append(pdf_path)
-            logger.info(f"  Found: {pdf_path.name}")
+        source_path = find_source_file(source_folder, serial_number)
+        if source_path:
+            source_files.append(source_path)
+            logger.info(f"  Found: {source_path.name}")
         else:
-            logger.warning(f"  PDF file not found for serial number '{serial_number}'")
+            logger.warning(f"  File not found for serial number '{serial_number}'")
     
-    if not pdf_paths:
-        logger.warning(f"Row {row_index + 1}: No PDF files found for any serial numbers, skipping...")
+    if not source_files:
+        logger.warning(f"Row {row_index + 1}: No files found for any serial numbers, skipping...")
         return False
     
-    output_filename = OUTPUT_FILENAME_PATTERN.format(row_index + 1)
-    output_path = output_folder / output_filename
+    # Convert Excel files to PDF and collect all PDF paths
+    pdf_paths = []
+    temp_pdf_files = []  # Track temporary files for cleanup
     
-    logger.info(f"  Merging {len(pdf_paths)} PDF(s) into {output_filename}...")
-    success = merge_pdfs(pdf_paths, output_path)
-    
-    if success:
-        logger.info(f"  ✓ Successfully created {output_filename}")
-    else:
-        logger.error(f"  ✗ Failed to create {output_filename}")
-    
-    return success
+    try:
+        for source_path in source_files:
+            if source_path.suffix.lower() in EXCEL_FILE_EXTENSIONS:
+                # Convert Excel to PDF
+                logger.info(f"  Converting {source_path.name} to PDF...")
+                temp_pdf = tempfile.NamedTemporaryFile(
+                    suffix='.pdf',
+                    delete=False,
+                    dir=output_folder.parent if output_folder.parent.exists() else None
+                )
+                temp_pdf.close()
+                temp_pdf_path = Path(temp_pdf.name)
+                temp_pdf_files.append(temp_pdf_path)
+                
+                if convert_excel_to_pdf(source_path, temp_pdf_path):
+                    pdf_paths.append(temp_pdf_path)
+                    logger.info(f"  ✓ Converted {source_path.name} to PDF")
+                else:
+                    logger.error(f"  ✗ Failed to convert {source_path.name} to PDF")
+            else:
+                # Already a PDF file
+                pdf_paths.append(source_path)
+        
+        if not pdf_paths:
+            logger.warning(f"Row {row_index + 1}: No PDF files to merge (conversions may have failed), skipping...")
+            return False
+        
+        output_filename = OUTPUT_FILENAME_PATTERN.format(row_index + 1)
+        output_path = output_folder / output_filename
+        
+        logger.info(f"  Merging {len(pdf_paths)} file(s) into {output_filename}...")
+        success = merge_pdfs(pdf_paths, output_path)
+        
+        if success:
+            logger.info(f"  ✓ Successfully created {output_filename}")
+        else:
+            logger.error(f"  ✗ Failed to create {output_filename}")
+        
+        return success
+        
+    finally:
+        # Clean up temporary PDF files
+        for temp_pdf in temp_pdf_files:
+            try:
+                if temp_pdf.exists():
+                    temp_pdf.unlink()
+                    logger.debug(f"  Cleaned up temporary file: {temp_pdf.name}")
+            except Exception as e:
+                logger.warning(f"  Failed to clean up temporary file {temp_pdf.name}: {e}")
 
 
 def process_file(file_path: Path, source_folder: Path, output_folder: Path,
                  required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> ProcessingResult:
     """
-    Process an entire data file and merge PDFs for each row.
+    Process an entire data file and merge PDFs and Excel files for each row.
     
     Args:
         file_path: Path to the CSV or Excel file
-        source_folder: Folder containing the PDF files
+        source_folder: Folder containing the PDF and Excel files
         output_folder: Folder where merged PDFs will be saved
         required_column: Name of the column containing serial numbers
         

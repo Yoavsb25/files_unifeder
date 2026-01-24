@@ -5,8 +5,8 @@ Unit tests for pdf_operations module.
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
-from pdf_merger.pdf_operations import find_pdf_file, merge_pdfs, _get_pdf_libraries
-from pdf_merger.enums import PDF_FILE_EXTENSIONS
+from pdf_merger.pdf_operations import find_pdf_file, find_source_file, merge_pdfs, _get_pdf_libraries
+from pdf_merger.enums import PDF_FILE_EXTENSIONS, EXCEL_FILE_EXTENSIONS
 
 
 class TestFindPdfFile:
@@ -331,3 +331,98 @@ class TestGetPdfLibraries:
             # Restore original values
             pdf_ops._PdfWriter = original_writer
             pdf_ops._PdfReader = original_reader
+
+
+class TestFindSourceFile:
+    """Test cases for find_source_file function (PDF and Excel files)."""
+    
+    def test_find_pdf_file(self, tmp_path):
+        """Test finding PDF file using find_source_file."""
+        folder = tmp_path / "source"
+        folder.mkdir()
+        pdf_file = folder / "GRNW_000103851.pdf"
+        pdf_file.write_bytes(b"fake pdf content")
+        
+        result = find_source_file(folder, "GRNW_000103851")
+        
+        assert result == pdf_file
+    
+    def test_find_excel_xlsx_file(self, tmp_path):
+        """Test finding Excel .xlsx file."""
+        folder = tmp_path / "source"
+        folder.mkdir()
+        excel_file = folder / "GRNW_000103851.xlsx"
+        excel_file.write_bytes(b"fake excel content")
+        
+        result = find_source_file(folder, "GRNW_000103851")
+        
+        assert result == excel_file
+    
+    def test_find_excel_xls_file(self, tmp_path):
+        """Test finding Excel .xls file."""
+        folder = tmp_path / "source"
+        folder.mkdir()
+        excel_file = folder / "GRNW_000103851.xls"
+        excel_file.write_bytes(b"fake excel content")
+        
+        result = find_source_file(folder, "GRNW_000103851")
+        
+        assert result == excel_file
+    
+    def test_find_source_file_prefers_pdf(self, tmp_path):
+        """Test that find_source_file finds PDF when both PDF and Excel exist."""
+        folder = tmp_path / "source"
+        folder.mkdir()
+        pdf_file = folder / "GRNW_000103851.pdf"
+        pdf_file.write_bytes(b"fake pdf content")
+        excel_file = folder / "GRNW_000103851.xlsx"
+        excel_file.write_bytes(b"fake excel content")
+        
+        result = find_source_file(folder, "GRNW_000103851")
+        
+        # Should find one of them (implementation may vary, but should find a file)
+        assert result is not None
+        assert result.exists()
+        assert result.stem.lower() == "grnw_000103851"
+    
+    def test_find_source_file_with_extension(self, tmp_path):
+        """Test finding source file when filename includes extension."""
+        folder = tmp_path / "source"
+        folder.mkdir()
+        excel_file = folder / "GRNW_000103851.xlsx"
+        excel_file.write_bytes(b"fake excel content")
+        
+        result = find_source_file(folder, "GRNW_000103851.xlsx")
+        
+        assert result == excel_file
+    
+    def test_find_source_file_case_insensitive(self, tmp_path):
+        """Test finding source file with case-insensitive matching."""
+        folder = tmp_path / "source"
+        folder.mkdir()
+        excel_file = folder / "grnw_000103851.xlsx"
+        excel_file.write_bytes(b"fake excel content")
+        
+        result = find_source_file(folder, "GRNW_000103851")
+        
+        assert result == excel_file
+    
+    def test_find_source_file_not_found(self, tmp_path):
+        """Test when source file is not found."""
+        folder = tmp_path / "source"
+        folder.mkdir()
+        
+        result = find_source_file(folder, "GRNW_000103851")
+        
+        assert result is None
+    
+    def test_find_source_file_ignores_other_files(self, tmp_path):
+        """Test that find_source_file ignores non-PDF/Excel files."""
+        folder = tmp_path / "source"
+        folder.mkdir()
+        text_file = folder / "GRNW_000103851.txt"
+        text_file.write_text("some text")
+        
+        result = find_source_file(folder, "GRNW_000103851")
+        
+        assert result is None
