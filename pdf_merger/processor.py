@@ -45,28 +45,19 @@ def process_row(row_index: int, serial_numbers_str: str, source_folder: Path,
     Returns:
         True if successful, False otherwise
     """
-    # Parse filenames from serial_numbers column
     filenames = split_serial_numbers(serial_numbers_str)
     
     if not filenames:
         logger.warning(f"Row {row_index + 1}: No filenames found, skipping...")
         return False
     
-    # Validate serial numbers
-    invalid_serial_numbers = []
-    for filename in filenames:
-        if not validate_serial_number(filename):
-            invalid_serial_numbers.append(filename)
-    
-    if invalid_serial_numbers:
-        logger.warning(f"Row {row_index + 1}: Invalid serial number format(s): {', '.join(invalid_serial_numbers)}")
-        logger.warning(f"  Expected format: GRNW_XXXXX or grnw_XXXXX. Continuing anyway...")
+    invalid_filenames = [invalid_filename for invalid_filename in filenames if not validate_serial_number(invalid_filename)]
+    if invalid_filenames:
+        logger.warning(f"Row {row_index + 1}: Invalid serial number format(s): {', '.join(invalid_filenames)}")
     
     logger.info(f"Row {row_index + 1}: Processing filenames: {', '.join(filenames)}")
     
-    # Find PDF files for each filename
     pdf_paths = []
-    
     for filename in filenames:
         pdf_path = find_pdf_file(source_folder, filename)
         if pdf_path:
@@ -79,11 +70,9 @@ def process_row(row_index: int, serial_numbers_str: str, source_folder: Path,
         logger.warning(f"Row {row_index + 1}: No PDF files found for any filenames, skipping...")
         return False
     
-    # Create output filename
     output_filename = OUTPUT_FILENAME_PATTERN.format(row_index + 1)
     output_path = output_folder / output_filename
     
-    # Merge PDFs
     logger.info(f"  Merging {len(pdf_paths)} PDF(s) into {output_filename}...")
     success = merge_pdfs(pdf_paths, output_path)
     
@@ -109,39 +98,37 @@ def process_file(file_path: Path, source_folder: Path, output_folder: Path,
     Returns:
         ProcessingResult with statistics about the processing
     """
-    # Ensure output folder exists
     output_folder.mkdir(parents=True, exist_ok=True)
     
     success_count = 0
-    total_rows = 0
+    row_index = 0
     failed_rows = []
     
     try:
-        for row_index, row in enumerate(read_data_file(file_path)):
-            total_rows += 1
+        for row_index, row in enumerate(read_data_file(file_path), start=1):
             serial_numbers_str = row.get(required_column, '')
             
             if process_row(row_index, serial_numbers_str, source_folder, output_folder):
                 success_count += 1
             else:
-                failed_rows.append(row_index + 1)  # 1-indexed for user display
+                failed_rows.append(row_index)
         
         return ProcessingResult(
-            total_rows=total_rows,
+            total_rows=row_index,
             successful_merges=success_count,
             failed_rows=failed_rows
         )
     except PDFMergerError as e:
         logger.error(f"PDF Merger error: {e}")
         return ProcessingResult(
-            total_rows=total_rows,
+            total_rows=row_index,
             successful_merges=success_count,
             failed_rows=failed_rows
         )
     except Exception as e:
         logger.error(f"Unexpected error processing file: {e}")
         return ProcessingResult(
-            total_rows=total_rows,
+            total_rows=row_index,
             successful_merges=success_count,
             failed_rows=failed_rows
         )
