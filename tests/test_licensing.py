@@ -582,9 +582,11 @@ class TestLicenseManager:
             
             assert result == LicenseStatus.VERSION_MISMATCH
     
-    def test_validate_license_not_found(self):
+    @patch.object(LicenseManager, 'load_license')
+    def test_validate_license_not_found(self, mock_load_license):
         """Test validating when license is None."""
         manager = LicenseManager()
+        mock_load_license.return_value = None
         
         result = manager.validate_license(None)
         

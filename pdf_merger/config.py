@@ -8,7 +8,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
 
-from .enums import DEFAULT_REQUIRED_COLUMN
+from .enums import DEFAULT_SERIAL_NUMBERS_COLUMN
 from .logger import get_logger
 
 logger = get_logger("config")
@@ -20,7 +20,7 @@ class AppConfig:
     input_file: Optional[str] = None
     pdf_dir: Optional[str] = None
     output_dir: Optional[str] = None
-    required_column: str = DEFAULT_REQUIRED_COLUMN
+    required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN
     
     def to_dict(self) -> dict:
         """Convert config to dictionary."""
@@ -33,7 +33,7 @@ class AppConfig:
             input_file=data.get('input_file'),
             pdf_dir=data.get('pdf_dir'),
             output_dir=data.get('output_dir'),
-            required_column=data.get('required_column', DEFAULT_REQUIRED_COLUMN)
+            required_column=data.get('required_column', DEFAULT_SERIAL_NUMBERS_COLUMN)
         )
     
     def get_input_file_path(self) -> Optional[Path]:

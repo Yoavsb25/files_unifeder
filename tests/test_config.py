@@ -12,7 +12,7 @@ from pdf_merger.config import (
     load_config,
     save_config
 )
-from pdf_merger.enums import DEFAULT_REQUIRED_COLUMN
+from pdf_merger.enums import DEFAULT_SERIAL_NUMBERS_COLUMN
 
 
 class TestAppConfig:
@@ -25,7 +25,7 @@ class TestAppConfig:
         assert config.input_file is None
         assert config.pdf_dir is None
         assert config.output_dir is None
-        assert config.required_column == DEFAULT_REQUIRED_COLUMN
+        assert config.required_column == DEFAULT_SERIAL_NUMBERS_COLUMN
     
     def test_app_config_with_values(self):
         """Test AppConfig with provided values."""
@@ -55,7 +55,7 @@ class TestAppConfig:
             'input_file': '/path/to/input.csv',
             'pdf_dir': '/path/to/pdfs',
             'output_dir': '/path/to/output',
-            'required_column': DEFAULT_REQUIRED_COLUMN
+            'required_column': DEFAULT_SERIAL_NUMBERS_COLUMN
         }
     
     def test_app_config_from_dict(self):
@@ -85,7 +85,7 @@ class TestAppConfig:
         assert config.input_file == '/path/to/input.csv'
         assert config.pdf_dir is None
         assert config.output_dir is None
-        assert config.required_column == DEFAULT_REQUIRED_COLUMN
+        assert config.required_column == DEFAULT_SERIAL_NUMBERS_COLUMN
     
     def test_get_input_file_path(self):
         """Test getting input file as Path object."""

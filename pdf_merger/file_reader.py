@@ -15,49 +15,56 @@ from .enums import (
     FILE_TYPE_CSV,
     DEFAULT_CSV_DELIMITER,
     CSV_SAMPLE_SIZE,
+    PDF_FILE_EXTENSIONS,
+    FILE_TYPE_PDF,
+    UTF_8_ENCODING,
 )
 
 def detect_file_type(file_path: Path) -> str:
     """
-    Detect if a file is CSV or Excel based on its extension.
-    
+    Detect the file type based on its extension.
+
     Args:
         file_path: Path to the file
-        
+
     Returns:
-        'excel' for .xlsx/.xls files, 'csv' for other files
+        One of: 'excel', 'csv', 'pdf'
+
+    Raises:
+        InvalidFileFormatError: If the file type is unsupported
     """
-    if file_path.suffix.lower() in EXCEL_FILE_EXTENSIONS:
+    file_extension = file_path.suffix.lower()
+    if file_extension in EXCEL_FILE_EXTENSIONS:
         return FILE_TYPE_EXCEL
-    return FILE_TYPE_CSV
+    elif file_extension in CSV_FILE_EXTENSIONS:
+        return FILE_TYPE_CSV
+    elif file_extension in PDF_FILE_EXTENSIONS:
+        return FILE_TYPE_PDF
+    raise InvalidFileFormatError(f"Unsupported file type: {file_extension}", file_path=file_path)
 
 
 def _detect_csv_delimiter(file_path: Path) -> str:
     """
-    Detect CSV delimiter from file sample.
-    
+    Detect CSV delimiter from a file sample.
+
     Args:
         file_path: Path to the CSV file
-        
+
     Returns:
-        Detected delimiter character
-        
-    Raises:
-        ValueError: If file is empty or delimiter cannot be detected
+        Detected delimiter character.
+        Defaults to DEFAULT_CSV_DELIMITER if detection fails or file is empty.
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as csvfile:
+        with open(file_path, 'r', encoding=UTF_8_ENCODING) as csvfile:
             sample = csvfile.read(CSV_SAMPLE_SIZE)
+            
             if not sample.strip():
                 # Default to comma if file is empty
                 return DEFAULT_CSV_DELIMITER
-            csvfile.seek(0)
-            sniffer = csv.Sniffer()
-            delimiter = sniffer.sniff(sample).delimiter
-            return delimiter
+        
+            return csv.Sniffer().sniff(sample).delimiter
     except Exception as e:
-        # Default to comma if detection fails
-        return DEFAULT_CSV_DELIMITER
+        raise InvalidFileFormatError(f"Failed to detect CSV delimiter for file {file_path}: {e}") from e
 
 
 def read_csv(file_path: Path) -> Iterator[Dict[str, Any]]:
@@ -75,7 +82,7 @@ def read_csv(file_path: Path) -> Iterator[Dict[str, Any]]:
     """
     try:
         delimiter = _detect_csv_delimiter(file_path)
-        with open(file_path, 'r', encoding='utf-8') as csvfile:
+        with open(file_path, 'r', encoding=UTF_8_ENCODING) as csvfile:
             reader = csv.DictReader(csvfile, delimiter=delimiter)
             
             for row in reader:
@@ -87,33 +94,26 @@ def read_csv(file_path: Path) -> Iterator[Dict[str, Any]]:
 def read_excel(file_path: Path) -> Iterator[Dict[str, Any]]:
     """
     Read an Excel file and yield rows as dictionaries.
-    
+
     Args:
         file_path: Path to the Excel file
-        
+
     Yields:
-        Dictionary representing each row
-        
+        Dictionary representing each row with string values
+
     Raises:
-        ImportError: If pandas/openpyxl are not installed
-        InvalidFileFormatError: If file cannot be read
-    """    
+        InvalidFileFormatError: If the file cannot be read as an Excel file
+    """
     try:
         df = pd.read_excel(file_path)
-    except Exception as e:
-        raise InvalidFileFormatError(f"Failed to read Excel file {file_path}: {e}") from e
-    
-    df = pd.read_excel(file_path)
-    
-    for _, row in df.iterrows():
-        # Convert row to dictionary, handling NaN values
-        row_dict = {}
-        for key, value in row.items():
-            if pd.notna(value):
-                row_dict[key] = str(value)
-            else:
-                row_dict[key] = ''
-        yield row_dict
+    except Exception as exc:
+        raise InvalidFileFormatError(
+            f"Failed to read Excel file {file_path}"
+        ) from exc
+
+    for record in df.fillna('').astype(str).to_dict(orient='records'):
+        yield record
+
 
 
 def read_data_file(file_path: Path) -> Iterator[Dict[str, Any]]:

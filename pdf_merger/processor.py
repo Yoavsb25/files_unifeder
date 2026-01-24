@@ -12,7 +12,7 @@ from .data_parser import split_serial_numbers
 from .file_reader import read_data_file
 from .logger import get_logger
 from .exceptions import PDFMergerError, InvalidFileFormatError
-from .enums import DEFAULT_REQUIRED_COLUMN, OUTPUT_FILENAME_PATTERN
+from .enums import DEFAULT_SERIAL_NUMBERS_COLUMN, OUTPUT_FILENAME_PATTERN
 from .validators import validate_serial_number
 
 logger = get_logger("processor")
@@ -96,7 +96,7 @@ def process_row(row_index: int, serial_numbers_str: str, source_folder: Path,
 
 
 def process_file(file_path: Path, source_folder: Path, output_folder: Path,
-                 required_column: str = DEFAULT_REQUIRED_COLUMN) -> ProcessingResult:
+                 required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> ProcessingResult:
     """
     Process an entire data file and merge PDFs for each row.
     

@@ -8,7 +8,7 @@ from typing import Tuple
 from .file_reader import get_file_columns
 from .logger import get_logger
 from .exceptions import MissingColumnError, FileNotFoundError, ValidationError
-from .enums import DEFAULT_REQUIRED_COLUMN, SERIAL_NUMBER_PREFIX, SERIAL_NUMBER_PREFIX_LOWER
+from .enums import DEFAULT_SERIAL_NUMBERS_COLUMN, SERIAL_NUMBER_PREFIX, SERIAL_NUMBER_PREFIX_LOWER
 
 logger = get_logger("validators")
 
@@ -53,7 +53,7 @@ def validate_folder(folder_path: Path, folder_type: str = "Folder") -> bool:
     return True
 
 
-def validate_file(file_path: Path, required_column: str = DEFAULT_REQUIRED_COLUMN) -> bool:
+def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> bool:
     """
     Validate that a data file exists and has the required column.
     
@@ -83,7 +83,7 @@ def validate_file(file_path: Path, required_column: str = DEFAULT_REQUIRED_COLUM
 
 
 def validate_paths(file_path: Path, source_folder: Path, output_folder: Path, 
-                   required_column: str = DEFAULT_REQUIRED_COLUMN) -> Tuple[bool, str]:
+                   required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> Tuple[bool, str]:
     """
     Validate all paths needed for processing.
     

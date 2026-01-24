@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..processor import process_file, ProcessingResult
-from ..enums import DEFAULT_REQUIRED_COLUMN
+from ..enums import DEFAULT_SERIAL_NUMBERS_COLUMN
 from ..logger import get_logger
 
 logger = get_logger("core.merger")
@@ -17,7 +17,7 @@ def run_merge(
     input_file: Path,
     pdf_dir: Path,
     output_dir: Path,
-    required_column: str = DEFAULT_REQUIRED_COLUMN
+    required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN
 ) -> ProcessingResult:
     """
     Run the merge operation.
