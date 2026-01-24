@@ -100,8 +100,7 @@ def merge_pdfs(pdf_paths: List[Path], output_path: Path) -> bool:
         
         for pdf_path in pdf_paths:
             try:
-                reader = PdfReader(str(pdf_path))
-                # Add all pages from this PDF
+                reader = PdfReader(str(pdf_path), strict=False)
                 for page in reader.pages:
                     writer.add_page(page)
             except Exception as e:
