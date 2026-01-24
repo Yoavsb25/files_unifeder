@@ -4,6 +4,9 @@ Handles finding and merging PDF files.
 """
 
 import sys
+import os
+import warnings
+from contextlib import contextmanager
 from pathlib import Path
 from typing import List, Optional
 
@@ -15,6 +18,18 @@ logger = get_logger("pdf_operations")
 # Lazy import of PDF libraries - only import when merge_pdfs is called
 _PdfWriter = None
 _PdfReader = None
+
+
+@contextmanager
+def suppress_stderr():
+    """Context manager to suppress stderr output."""
+    with open(os.devnull, 'w') as devnull:
+        old_stderr = sys.stderr
+        try:
+            sys.stderr = devnull
+            yield
+        finally:
+            sys.stderr = old_stderr
 
 
 def _get_pdf_libraries():
@@ -144,9 +159,13 @@ def merge_pdfs(pdf_paths: List[Path], output_path: Path) -> bool:
         
         for pdf_path in pdf_paths:
             try:
-                reader = PdfReader(str(pdf_path), strict=False)
-                for page in reader.pages:
-                    writer.add_page(page)
+                # Suppress stderr during PDF reading to avoid noisy PdfReadError messages
+                # These are common with Apple-annotated PDFs but don't prevent successful reading
+                # when strict=False is used
+                with suppress_stderr():
+                    reader = PdfReader(str(pdf_path), strict=False)
+                    for page in reader.pages:
+                        writer.add_page(page)
             except Exception as e:
                 logger.error(f"Error reading PDF {pdf_path.name}: {e}")
                 return False

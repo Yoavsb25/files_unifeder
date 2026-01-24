@@ -68,7 +68,7 @@ This installs all required packages:
 - `pypdf>=3.0.0` - PDF merging library
 - `pandas>=1.3.0` - Data manipulation (for Excel files)
 - `openpyxl>=3.0.0` - Excel file reading
-- `xlsx2pdf>=0.1.4` - Excel to PDF conversion
+- `reportlab>=3.6.0` - PDF generation (for Excel to PDF conversion)
 - `customtkinter>=5.0.0` - Modern GUI framework
 - `cryptography>=41.0.0` - License signing/verification
 - `pytest>=7.0.0` - Testing framework (for development)
