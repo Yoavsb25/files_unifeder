@@ -138,7 +138,8 @@ files_unifeder/
 ├── main.py                      # Application entry point
 ├── pdf_merger/                   # Main package
 │   ├── __init__.py              # Public API exports
-│   ├── config.py                # Configuration settings
+│   ├── config.py                # Configuration settings with precedence
+│   ├── config_schema.py         # Configuration schema and validation
 │   ├── logger.py                # Logging configuration
 │   ├── exceptions.py            # Custom exception classes
 │   │
@@ -438,11 +439,37 @@ The Excel converter uses a two-step process:
 - Real errors are still caught and logged via exception handling
 - Uses `strict=False` mode in pypdf to handle problematic PDFs gracefully
 
+### Configuration Management
+
+The application supports multiple configuration sources with a clear precedence order:
+
+**Configuration Precedence** (highest to lowest):
+1. **Environment Variables** - `PDF_MERGER_INPUT_FILE`, `PDF_MERGER_SOURCE_DIR`, `PDF_MERGER_OUTPUT_DIR`, `PDF_MERGER_COLUMN`
+2. **CLI Arguments** - Command-line flags override config files
+3. **User Config File** - `~/.pdf_merger/config.json` or `config.json` in app directory
+4. **Per-Project Preset** - `.pdf_merger_config.json` in project directory (searched up directory tree)
+5. **Defaults** - Built-in default values
+
+**Configuration Components**:
+- `config.py` - Main configuration management with precedence resolution
+- `config_schema.py` - Schema validation and path validation
+- All configuration values are validated (paths must exist, column names must be valid)
+- Invalid values are logged as warnings and defaults are used
+
+**Use Cases**:
+- Environment variables for CI/CD and automated workflows
+- CLI arguments for one-off operations
+- User config file for personal defaults
+- Per-project presets for project-specific settings
+
+See `docs/CONFIGURATION.md` for detailed configuration documentation.
+
 ## Additional Resources
 
 - **Installation Guide**: See `INSTALLATION.md`
 - **Testing Guide**: See `TESTING.md`
 - **User Guide**: See `docs/README_USER.md`
+- **Configuration Guide**: See `docs/CONFIGURATION.md`
 - **Build Guide**: See `BUILD.md` for packaging instructions
 - **License Tools**: See `tools/README.md` for license generation
 
