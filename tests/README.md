@@ -2,6 +2,23 @@
 
 This directory contains comprehensive unit tests for the PDF Merger application. The tests ensure that all core functionality works correctly and help prevent regressions when making changes to the codebase.
 
+## Organization
+
+Tests are organized into logical subdirectories by module category for better maintainability and navigation:
+
+- **`unit/data/`** - Data processing: parsing, file reading, validation
+- **`unit/operations/`** - Operations: PDF merging, Excel conversion, processing
+- **`unit/core/`** - Core business logic and orchestration
+- **`unit/ui/`** - User interface components
+- **`unit/licensing/`** - License management and validation
+- **`unit/utils/`** - Utilities: logging, config, exceptions
+
+This organization makes it easy to:
+- Find tests for specific functionality
+- Run tests by category
+- Maintain and extend the test suite
+- Understand the codebase structure
+
 ## Overview
 
 The test suite covers all major modules of the PDF Merger:
@@ -18,19 +35,43 @@ The test suite covers all major modules of the PDF Merger:
 
 ## Test Structure
 
-Each test file follows a consistent structure:
+Tests are organized into logical subdirectories by module category:
 
 ```
 tests/
 ├── __init__.py
-├── test_data_parser.py      # Tests for data parsing functionality
-├── test_validators.py       # Tests for validation functions
-├── test_file_reader.py      # Tests for CSV/Excel file reading
-├── test_pdf_operations.py   # Tests for PDF/Excel finding and merging
-├── test_excel_converter.py  # Tests for Excel to PDF conversion
-├── test_processor.py        # Tests for main processing logic
-└── test_exceptions.py       # Tests for custom exceptions
+├── README.md                # This file
+│
+└── unit/                    # Unit tests organized by category
+    ├── data/                # Data processing tests
+    │   ├── test_data_parser.py      # Serial number parsing
+    │   ├── test_file_reader.py      # CSV/Excel file reading
+    │   └── test_validators.py       # Input validation
+    │
+    ├── operations/          # Operations tests
+    │   ├── test_pdf_operations.py   # PDF/Excel finding and merging
+    │   ├── test_excel_converter.py  # Excel to PDF conversion
+    │   └── test_processor.py        # Main processing logic
+    │
+    ├── core/                # Core module tests
+    │   ├── test_core.py             # Core business logic
+    │   └── test_core_init.py        # Core module exports
+    │
+    ├── ui/                  # UI tests
+    │   ├── test_ui.py               # GUI application
+    │   └── test_ui_init.py          # UI module exports
+    │
+    ├── licensing/           # Licensing tests
+    │   ├── test_licensing.py        # License management
+    │   └── test_licensing_init.py   # Licensing module exports
+    │
+    └── utils/               # Utility tests
+        ├── test_logger.py           # Logging system
+        ├── test_config.py            # Configuration
+        └── test_exceptions.py       # Custom exceptions
 ```
+
+Each test file follows a consistent structure with test classes grouping related test cases.
 
 ## Running the Tests
 
@@ -66,19 +107,27 @@ pytest -v
 Run a specific test file:
 
 ```bash
-pytest tests/test_data_parser.py
+pytest tests/unit/data/test_data_parser.py
+```
+
+Run all tests in a category:
+
+```bash
+pytest tests/unit/data/          # All data processing tests
+pytest tests/unit/operations/    # All operations tests
+pytest tests/unit/core/          # All core tests
 ```
 
 Run a specific test class:
 
 ```bash
-pytest tests/test_data_parser.py::TestParseSerialNumbers
+pytest tests/unit/data/test_data_parser.py::TestSplitSerialNumbers
 ```
 
 Run a specific test function:
 
 ```bash
-pytest tests/test_data_parser.py::TestParseSerialNumbers::test_parse_single_serial_number
+pytest tests/unit/data/test_data_parser.py::TestSplitSerialNumbers::test_split_single_serial_number
 ```
 
 ### Running with Coverage
@@ -99,7 +148,7 @@ The HTML report will be generated in `htmlcov/index.html`. Open it in a browser 
 
 ## Test Details
 
-### test_data_parser.py
+### unit/data/test_data_parser.py
 
 Tests for the `split_serial_numbers` function:
 - Parsing single and multiple serial numbers
@@ -115,7 +164,7 @@ Tests for the `split_serial_numbers` function:
 - Empty string handling
 - Invalid input handling
 
-### test_validators.py
+### unit/data/test_validators.py
 
 Tests for validation functions:
 - `validate_serial_number` - Validates serial number format (GRNW_ prefix)
@@ -129,7 +178,7 @@ Tests for validation functions:
 - Files with and without required columns
 - Complete path validation scenarios
 
-### test_file_reader.py
+### unit/data/test_file_reader.py
 
 Tests for file reading operations:
 - `detect_file_type` - Detecting CSV vs Excel files
@@ -146,7 +195,7 @@ Tests for file reading operations:
 - Handling empty files
 - Error handling for invalid files
 
-### test_pdf_operations.py
+### unit/operations/test_pdf_operations.py
 
 Tests for PDF operations:
 - `find_pdf_file` - Finding PDF files in a folder (backward compatibility)
@@ -163,7 +212,7 @@ Tests for PDF operations:
 
 **Note:** PDF library imports are lazy-loaded (only when `merge_pdfs` is called), so tests can run without pypdf installed. Tests mock `_get_pdf_libraries()` to avoid requiring actual PDF libraries.
 
-### test_excel_converter.py
+### unit/operations/test_excel_converter.py
 
 Tests for Excel to PDF conversion:
 - `convert_excel_to_pdf` - Converting Excel files to PDF format
@@ -180,7 +229,7 @@ Tests for Excel to PDF conversion:
 
 **Note:** Excel conversion uses openpyxl (for reading) and reportlab (for PDF generation). Tests mock these libraries to avoid requiring actual Excel files.
 
-### test_processor.py
+### unit/operations/test_processor.py
 
 Tests for main processing logic:
 - `ProcessingResult` - Result dataclass
@@ -198,7 +247,7 @@ Tests for main processing logic:
 - Error handling and failure tracking
 - Custom column names
 
-### test_exceptions.py
+### unit/utils/test_exceptions.py
 
 Tests for custom exception classes:
 - `PDFMergerError` - Base exception class
@@ -214,11 +263,43 @@ Tests for custom exception classes:
 - Path handling (Path objects and strings)
 - Error message formatting
 
+## Running Tests by Category
+
+You can run tests for specific categories:
+
+```bash
+# Run all data processing tests
+pytest tests/unit/data/
+
+# Run all operations tests
+pytest tests/unit/operations/
+
+# Run all core tests
+pytest tests/unit/core/
+
+# Run all UI tests
+pytest tests/unit/ui/
+
+# Run all licensing tests
+pytest tests/unit/licensing/
+
+# Run all utility tests
+pytest tests/unit/utils/
+```
+
 ## Writing New Tests
 
 When adding new functionality, follow these guidelines:
 
-1. **Create a test file** following the naming convention: `test_<module_name>.py`
+1. **Place test file in the appropriate category directory**:
+   - Data processing → `tests/unit/data/`
+   - Operations → `tests/unit/operations/`
+   - Core logic → `tests/unit/core/`
+   - UI components → `tests/unit/ui/`
+   - Licensing → `tests/unit/licensing/`
+   - Utilities → `tests/unit/utils/`
+
+2. **Create a test file** following the naming convention: `test_<module_name>.py`
 
 2. **Organize tests into classes** that group related test cases:
    ```python

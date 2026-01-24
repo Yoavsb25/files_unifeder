@@ -40,17 +40,35 @@ The PDF Batch Merger project uses **pytest** as the testing framework with compr
 ```
 tests/
 ├── __init__.py
-├── test_data_parser.py      # Serial number parsing tests
-├── test_validators.py        # Validation function tests
-├── test_file_reader.py       # CSV/Excel reading tests
-├── test_pdf_operations.py   # PDF/Excel finding and merging tests
-├── test_excel_converter.py  # Excel to PDF conversion tests
-├── test_processor.py        # Main processing tests
-├── test_exceptions.py       # Exception class tests
-├── test_logger.py           # Logging tests
-├── test_licensing.py        # License system tests
-├── test_ui.py               # UI component tests
-└── README.md                # Additional test documentation
+├── README.md                # Test documentation
+│
+└── unit/                    # Unit tests organized by category
+    ├── data/                # Data processing tests
+    │   ├── test_data_parser.py      # Serial number parsing
+    │   ├── test_file_reader.py      # CSV/Excel reading
+    │   └── test_validators.py       # Validation functions
+    │
+    ├── operations/          # Operations tests
+    │   ├── test_pdf_operations.py   # PDF/Excel finding and merging
+    │   ├── test_excel_converter.py  # Excel to PDF conversion
+    │   └── test_processor.py        # Main processing
+    │
+    ├── core/                # Core module tests
+    │   ├── test_core.py             # Core business logic
+    │   └── test_core_init.py        # Module exports
+    │
+    ├── ui/                  # UI tests
+    │   ├── test_ui.py               # GUI application
+    │   └── test_ui_init.py          # Module exports
+    │
+    ├── licensing/           # Licensing tests
+    │   ├── test_licensing.py        # License system
+    │   └── test_licensing_init.py   # Module exports
+    │
+    └── utils/               # Utility tests
+        ├── test_logger.py           # Logging
+        ├── test_config.py            # Configuration
+        └── test_exceptions.py       # Exception classes
 ```
 
 ### Test File Organization
