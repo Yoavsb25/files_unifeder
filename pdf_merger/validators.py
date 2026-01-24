@@ -1,13 +1,16 @@
 """
 Validation module.
 Handles validation of files, folders, and paths.
+
+Validation Strategy:
+- Critical validations (file/folder/paths): Raise exceptions - these are pre-conditions
+- Data validations (serial numbers): Return bool - allow graceful degradation
 """
 
 from pathlib import Path
-from typing import Tuple
 from .file_reader import get_file_columns
 from .logger import get_logger
-from .exceptions import MissingColumnError, FileNotFoundError, ValidationError
+from .exceptions import MissingColumnError, FileNotFoundError, ValidationError, InvalidFileFormatError
 from .enums import DEFAULT_SERIAL_NUMBERS_COLUMN, SERIAL_NUMBER_PREFIX, SERIAL_NUMBER_PREFIX_LOWER
 
 logger = get_logger("validators")
@@ -25,13 +28,17 @@ def validate_serial_number(serial_number: str) -> bool:
     if not serial_number or not serial_number.strip():
         return False
 
-    if not serial_number.startswith(SERIAL_NUMBER_PREFIX) and not serial_number.startswith(SERIAL_NUMBER_PREFIX_LOWER):
+    if not serial_number.startswith(SERIAL_NUMBER_PREFIX, SERIAL_NUMBER_PREFIX_LOWER):
+        return False
+
+    suffix = serial_number.split('_', 1)[-1]
+    if not suffix.isdigit():
         return False
         
     return True
 
 
-def validate_folder(folder_path: Path, folder_type: str = "Folder") -> bool:
+def validate_folder(folder_path: Path, folder_type: str = "Folder") -> None:
     """
     Validate that a folder exists and is a directory.
     
@@ -39,21 +46,19 @@ def validate_folder(folder_path: Path, folder_type: str = "Folder") -> bool:
         folder_path: Path to validate
         folder_type: Type description for error messages (e.g., "Source", "Output")
         
-    Returns:
-        True if valid, False otherwise
+    Raises:
+        FileNotFoundError: If folder doesn't exist or is not a directory
     """
     if not folder_path.exists():
         logger.error(f"{folder_type} folder not found: {folder_path}")
-        return False
+        raise FileNotFoundError(folder_path, file_type=f"{folder_type} folder")
     
     if not folder_path.is_dir():
         logger.error(f"{folder_path} is not a directory")
-        return False
-    
-    return True
+        raise FileNotFoundError(folder_path, file_type=f"{folder_type} (not a directory)")
 
 
-def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> bool:
+def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
     """
     Validate that a data file exists and has the required column.
     
@@ -61,12 +66,14 @@ def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS
         file_path: Path to the file to validate
         required_column: Name of the required column (default: 'serial_numbers')
         
-    Returns:
-        True if valid, False otherwise
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        MissingColumnError: If required column is missing
+        InvalidFileFormatError: If file cannot be read (wrapped from exceptions)
     """
     if not file_path.exists():
         logger.error(f"File not found: {file_path}")
-        return False
+        raise FileNotFoundError(file_path, file_type="Data file")
     
     try:
         columns = get_file_columns(file_path)
@@ -74,16 +81,16 @@ def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS
         if required_column not in columns:
             logger.error(f"'{required_column}' column not found in file.")
             logger.error(f"Available columns: {', '.join(columns)}")
-            return False
+            raise MissingColumnError(required_column, columns, file_path)
+    except (MissingColumnError, FileNotFoundError):
+        raise
     except Exception as e:
         logger.error(f"Error reading file: {e}")
-        return False
-    
-    return True
+        raise InvalidFileFormatError(f"Error reading file: {e}", file_path=file_path) from e
 
 
 def validate_paths(file_path: Path, source_folder: Path, output_folder: Path, 
-                   required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> Tuple[bool, str]:
+                   required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
     """
     Validate all paths needed for processing.
     
@@ -93,18 +100,22 @@ def validate_paths(file_path: Path, source_folder: Path, output_folder: Path,
         output_folder: Path to output folder
         required_column: Name of the required column
         
-    Returns:
-        Tuple of (is_valid, error_message)
+    Raises:
+        FileNotFoundError: If file or folder doesn't exist
+        MissingColumnError: If required column is missing from file
+        ValidationError: If output folder parent doesn't exist
     """
-    if not validate_file(file_path, required_column):
-        return False, "File validation failed"
+    # Validate file (raises FileNotFoundError or MissingColumnError)
+    validate_file(file_path, required_column)
     
-    if not validate_folder(source_folder, "Source"):
-        return False, "Source folder validation failed"
+    # Validate source folder (raises FileNotFoundError)
+    validate_folder(source_folder, "Source")
     
+    # Validate output folder parent exists (if output folder is not root)
     if output_folder.parent != output_folder:
         if not output_folder.parent.exists():
             logger.error(f"Parent directory of output folder does not exist: {output_folder.parent}")
-            return False, "Output folder parent validation failed"
-    
-    return True, ""
+            raise ValidationError(
+                f"Parent directory of output folder does not exist: {output_folder.parent}",
+                field="output_folder"
+            )

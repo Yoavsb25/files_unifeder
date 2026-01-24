@@ -9,6 +9,7 @@ from pathlib import Path
 
 from pdf_merger import process_file, validate_paths
 from pdf_merger.logger import setup_logger
+from pdf_merger.exceptions import PDFMergerError
 
 # Initialize logger for CLI
 setup_logger("pdf_merger", level=logging.INFO)
@@ -42,9 +43,11 @@ def main():
     source_folder = Path(args.folder)
     output_folder = Path(args.output)
     
-    # Validate paths
-    is_valid, _ = validate_paths(file_path, source_folder, output_folder)
-    if not is_valid:
+    # Validate paths (raises exceptions on failure)
+    try:
+        validate_paths(file_path, source_folder, output_folder)
+    except PDFMergerError as e:
+        print(f"Validation error: {e}")
         sys.exit(1)
     
     # Process the file

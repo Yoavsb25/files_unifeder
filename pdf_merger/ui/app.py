@@ -15,6 +15,7 @@ from ..licensing import LicenseManager, LicenseStatus
 from ..logger import get_logger, setup_logger
 from ..processor import ProcessingResult
 from ..validators import validate_file, validate_folder
+from ..exceptions import PDFMergerError
 
 # Setup logging
 setup_logger("pdf_merger", level=20)  # INFO level
@@ -291,14 +292,15 @@ class PDFMergerApp(ctk.CTk):
         
         if file_path:
             path = Path(file_path)
-            if validate_file(path):
+            try:
+                validate_file(path)
                 self.input_file_path = path
                 self.input_file_label.configure(text=str(path))
                 self._log(f"Selected input file: {path.name}")
                 self._update_ui_state()
-            else:
-                self._log(f"Error: Invalid file selected")
-                self._show_error("Invalid file. Please select a valid CSV or Excel file.")
+            except PDFMergerError as e:
+                self._log(f"Error: {e}")
+                self._show_error(f"Invalid file: {e}")
     
     def _select_pdf_directory(self):
         """Open directory dialog to select PDF directory."""
@@ -306,14 +308,15 @@ class PDFMergerApp(ctk.CTk):
         
         if dir_path:
             path = Path(dir_path)
-            if validate_folder(path, "PDF"):
+            try:
+                validate_folder(path, "PDF")
                 self.pdf_dir_path = path
                 self.pdf_dir_label.configure(text=str(path))
                 self._log(f"Selected PDF directory: {path}")
                 self._update_ui_state()
-            else:
-                self._log(f"Error: Invalid directory selected")
-                self._show_error("Invalid directory. Please select a valid directory.")
+            except PDFMergerError as e:
+                self._log(f"Error: {e}")
+                self._show_error(f"Invalid directory: {e}")
     
     def _select_output_directory(self):
         """Open directory dialog to select output directory."""

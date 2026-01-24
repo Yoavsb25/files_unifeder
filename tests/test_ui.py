@@ -216,7 +216,7 @@ class TestPDFMergerApp:
     @patch('pdf_merger.ui.app.validate_file')
     def test_select_input_file_success(self, mock_validate, mock_dialog):
         """Test selecting input file successfully."""
-        mock_validate.return_value = True
+        mock_validate.return_value = None  # No exception raised
         mock_dialog.return_value = "/path/to/input.csv"
         
         app = self._create_mock_app()
@@ -233,7 +233,8 @@ class TestPDFMergerApp:
     @patch('pdf_merger.ui.app.validate_file')
     def test_select_input_file_invalid(self, mock_validate, mock_dialog):
         """Test selecting invalid input file."""
-        mock_validate.return_value = False
+        from pdf_merger.exceptions import FileNotFoundError
+        mock_validate.side_effect = FileNotFoundError(Path("/path/to/invalid.txt"), file_type="Data file")
         mock_dialog.return_value = "/path/to/invalid.txt"
         
         app = self._create_mock_app()
@@ -250,7 +251,7 @@ class TestPDFMergerApp:
     @patch('pdf_merger.ui.app.validate_folder')
     def test_select_pdf_directory_success(self, mock_validate, mock_dialog):
         """Test selecting PDF directory successfully."""
-        mock_validate.return_value = True
+        mock_validate.return_value = None  # No exception raised
         mock_dialog.return_value = "/path/to/pdfs"
         
         app = self._create_mock_app()
@@ -267,7 +268,7 @@ class TestPDFMergerApp:
     @patch('pdf_merger.ui.app.validate_folder')
     def test_select_output_directory_success(self, mock_validate, mock_dialog, tmp_path):
         """Test selecting output directory successfully."""
-        mock_validate.return_value = True
+        mock_validate.return_value = None  # No exception raised
         output_dir = tmp_path / "output"
         mock_dialog.return_value = str(output_dir)
         
