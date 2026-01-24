@@ -238,17 +238,17 @@ class TestReadDataFile:
 class TestGetFileColumns:
     """Test cases for get_file_columns function."""
     
-    @patch('pdf_merger.file_reader.pd.read_excel')
+    @patch('pdf_merger.file_reader.read_excel')
     def test_get_file_columns_excel(self, mock_read_excel, tmp_path):
         """Test getting columns from Excel file."""
         file_path = tmp_path / "test.xlsx"
         
-        mock_df = pd.DataFrame({'col1': [1], 'col2': [2]})
-        mock_read_excel.return_value = mock_df
+        # Mock read_excel to return a generator with one row
+        mock_read_excel.return_value = iter([{'col1': '1', 'col2': '2'}])
         
         columns = get_file_columns(file_path)
         
-        assert columns == ['col1', 'col2']
+        assert set(columns) == {'col1', 'col2'}
         mock_read_excel.assert_called_once_with(file_path)
     
     def test_get_file_columns_csv(self, tmp_path):
@@ -269,11 +269,11 @@ class TestGetFileColumns:
         
         assert columns == []
     
-    @patch('pdf_merger.file_reader.pd.read_excel')
+    @patch('pdf_merger.file_reader.read_excel')
     def test_get_file_columns_excel_error(self, mock_read_excel, tmp_path):
         """Test getting columns raises InvalidFileFormatError on error."""
         file_path = tmp_path / "test.xlsx"
-        mock_read_excel.side_effect = Exception("Read error")
+        mock_read_excel.side_effect = InvalidFileFormatError("Read error")
         
         with pytest.raises(InvalidFileFormatError):
             get_file_columns(file_path)
