@@ -7,6 +7,14 @@
 3. [Component Structure](#component-structure)
 4. [Data Flow](#data-flow)
 5. [Architecture Principles](#architecture-principles)
+6. [Detailed Diagrams](#detailed-diagrams)
+   - [Configuration Management](#configuration-management)
+   - [Domain Models](#domain-models)
+   - [Matching Rules](#matching-rules)
+   - [Processing Pipeline](#processing-flow)
+   - [Observability](#observability)
+   - [Cross-Platform Path Handling](#cross-platform-path-handling)
+   - [License Validation](#license-validation)
 
 ---
 
@@ -405,6 +413,8 @@ flowchart TD
   - `is_expired()`: Checks expiration with clock skew tolerance
 - **`license_signer.py`**: RSA signature generation and verification
 
+#### License System Architecture
+
 ```mermaid
 graph LR
     subgraph "License Generation"
@@ -427,71 +437,175 @@ graph LR
     Validation --> Status[License Status]
 ```
 
+#### License Validation Flow with UX Improvements
+
+```mermaid
+flowchart TD
+    Start([Application Start]) --> LoadLicense[Load License File<br/>from App Dir or ~/.pdf_merger]
+    LoadLicense --> CheckExists{License<br/>Exists?}
+    CheckExists -->|No| NotFound[Status: NOT_FOUND<br/>Show Error Message]
+    CheckExists -->|Yes| CheckOffline[Check Offline Mode<br/>Test Network Connection]
+    CheckOffline -->|Offline| OfflineNote[Add Offline Note<br/>to Error Messages]
+    CheckOffline -->|Online| CheckVersion
+    OfflineNote --> CheckVersion[Check Version<br/>Match?]
+    CheckVersion -->|No| VersionMismatch[Status: VERSION_MISMATCH<br/>Show Error Message]
+    CheckVersion -->|Yes| VerifySignature[Verify RSA Signature<br/>Using Public Key]
+    VerifySignature -->|Invalid| InvalidSig[Status: INVALID_SIGNATURE<br/>Show Error Message]
+    VerifySignature -->|Valid| CheckExpiry[Check Expiration<br/>with Clock Skew Tolerance<br/>Default: ±5 minutes]
+    CheckExpiry -->|Expired| Expired[Status: EXPIRED<br/>Show Expiry Message]
+    CheckExpiry -->|Valid| CheckExpiryWarning{Expiring<br/>Soon?}
+    CheckExpiryWarning -->|30 days| InfoWarning[Show Info Warning<br/>Days until expiry]
+    CheckExpiryWarning -->|14 days| WarningLevel[Show Warning<br/>Consider renewing]
+    CheckExpiryWarning -->|7 days| CriticalWarning[Show Critical Warning<br/>Renew soon]
+    CheckExpiryWarning -->|>30 days| ValidLicense[Status: VALID<br/>Show License Info]
+    InfoWarning --> ValidLicense
+    WarningLevel --> ValidLicense
+    CriticalWarning --> ValidLicense
+    ValidLicense --> UpdateUI[Update UI<br/>Color-coded Status]
+    NotFound --> ShowError[Show Error in UI<br/>Actionable Guidance]
+    VersionMismatch --> ShowError
+    InvalidSig --> ShowError
+    Expired --> ShowWarning[Show Warning in UI<br/>Allow App to Open]
+    UpdateUI --> End([Application Ready])
+    ShowError --> Exit([Exit Application])
+    ShowWarning --> End
+```
+
 ---
 
 ## Data Flow
 
 ### Processing Flow
 
+#### Complete Processing Pipeline with Domain Models
+
 ```mermaid
 flowchart TD
-    Start([User Clicks Run Merge]) --> Validate[Validate Inputs]
+    Start([User Clicks Run Merge]) --> LoadConfig[Load Configuration<br/>with Precedence]
+    LoadConfig --> Validate[Validate Inputs]
     Validate -->|Invalid| Error[Show Error]
-    Validate -->|Valid| ReadFile[Read CSV/Excel File]
-    ReadFile --> ParseRows[Parse Rows]
-    ParseRows --> Loop{For Each Row}
-    Loop --> ParseSerials[Parse Serial Numbers]
-    ParseSerials --> FindFiles[Find Source Files<br/>PDF & Excel]
-    FindFiles --> ConvertExcel{Excel Files?}
-    ConvertExcel -->|Yes| Convert[Convert Excel to PDF<br/>Create Temp PDF]
-    ConvertExcel -->|No| CheckFound{Files Found?}
-    Convert --> CheckFound
-    CheckFound -->|No| Warn[Log Warning<br/>Skip Row]
-    CheckFound -->|Yes| Merge[Merge PDFs<br/>Original + Converted]
-    Warn --> NextRow
-    Merge --> Save[Save Merged PDF]
-    Save --> Cleanup[Cleanup Temp Files]
-    Cleanup --> NextRow{More Rows?}
-    NextRow -->|Yes| Loop
-    NextRow -->|No| Summary[Generate Summary]
-    Summary --> Display[Display Results]
+    Validate -->|Valid| CreateJob[Create MergeJob<br/>Domain Model]
+    CreateJob --> ReadFile[FileReader.read_data_file]
+    ReadFile --> ParseRow[Row.from_raw_data<br/>Parse & Validate Serial Numbers]
+    ParseRow --> AddRow[MergeJob.add_row]
+    AddRow --> MoreRows{More Rows?}
+    MoreRows -->|Yes| ParseRow
+    MoreRows -->|No| ProcessJob[process_job<br/>MergeJob]
+    ProcessJob --> InitMetrics[Initialize Metrics<br/>Collector]
+    InitMetrics --> ProcessRow[process_row_with_models<br/>Row]
+    ProcessRow --> StartTimer[Start Processing Timer]
+    StartTimer --> FindFiles[find_source_file<br/>Using Matching Rules]
+    FindFiles --> CheckAmbiguous{Ambiguous<br/>Match?}
+    CheckAmbiguous -->|Yes| HandleAmbiguous{Behavior<br/>Mode?}
+    CheckAmbiguous -->|No| CheckFound{Files<br/>Found?}
+    HandleAmbiguous -->|FAIL_FAST| RaiseError[Raise ValueError]
+    HandleAmbiguous -->|WARN_FIRST| LogWarning[Log Warning<br/>Use First Match]
+    HandleAmbiguous -->|LOG_ALL| LogAll[Log All Matches]
+    LogWarning --> CheckFound
+    LogAll --> CheckFound
+    CheckFound -->|No| SkipRow[RowResult: SKIPPED<br/>No Files Found]
+    CheckFound -->|Yes| CheckExcel{Excel<br/>Files?}
+    CheckExcel -->|Yes| ConvertExcel[convert_excel_to_pdf<br/>with Pagination]
+    CheckExcel -->|No| CheckStreaming
+    ConvertExcel --> CreateTemp[Create Temp PDF]
+    CreateTemp --> CheckStreaming{Use<br/>Streaming?}
+    CheckStreaming -->|Yes| StreamMerge[merge_pdfs_streaming<br/>Chunked Processing]
+    CheckStreaming -->|No| StandardMerge[merge_pdfs<br/>Standard Mode]
+    StreamMerge --> SavePDF[Save Merged PDF]
+    StandardMerge --> SavePDF
+    SavePDF --> RecordMetrics[Record Metrics<br/>Time, Size, Success]
+    RecordMetrics --> CreateResult[RowResult: SUCCESS<br/>with Details]
+    SavePDF --> Cleanup[Cleanup Temp Files]
+    Cleanup --> AddResult[MergeResult.add_row_result]
+    SkipRow --> AddResult
+    CreateResult --> AddResult
+    RaiseError --> AddResult
+    AddResult --> NextRow{More Rows?}
+    NextRow -->|Yes| ProcessRow
+    NextRow -->|No| FinalMetrics[Final Metrics Summary]
+    FinalMetrics --> ReturnResult[Return MergeResult<br/>with All Statistics]
+    ReturnResult --> Display[Display Results in UI]
     Error --> End([End])
     Display --> End
 ```
 
 ### File Processing Pipeline
 
+#### Enhanced Processing Pipeline with All Features
+
 ```mermaid
 graph TB
     subgraph "Input"
         CSV[CSV/Excel File<br/>serial_numbers column]
         SourceFiles[Source Files Folder<br/>PDF & Excel]
+        Config[Configuration<br/>Multi-Source]
     end
     
     subgraph "Processing"
         Read[File Reader<br/>Detect Type & Read]
         Parse[Data Parser<br/>Parse Serial Numbers]
-        Find[PDF Operations<br/>Find Source Files]
-        Convert[Excel Converter<br/>Convert Excel to PDF]
-        Merge[PDF Operations<br/>Merge PDFs]
+        CreateRow[Create Row<br/>Domain Model]
+        Find[Matching Rules<br/>Find Source Files<br/>with Ambiguity Detection]
+        PathUtils[Path Utils<br/>Cross-Platform<br/>Normalization]
+        Convert[Excel Converter<br/>Convert Excel to PDF<br/>with Pagination]
+        CheckSize{File Size<br/>> Threshold?}
+        StreamMerge[Streaming Merge<br/>Chunked Processing]
+        StandardMerge[Standard Merge<br/>In-Memory]
+        Metrics[Record Metrics<br/>Time, Size, Success]
     end
     
     subgraph "Output"
         Merged[Merged PDFs<br/>merged_row_N.pdf]
         Log[Processing Log<br/>Summary & Errors]
+        Results[MergeResult<br/>Domain Model<br/>with Statistics]
     end
     
     CSV --> Read
+    Config --> Read
     Read --> Parse
-    Parse --> Find
+    Parse --> CreateRow
+    CreateRow --> Find
     SourceFiles --> Find
+    Find --> PathUtils
+    PathUtils --> Find
     Find --> Convert
-    Convert --> Merge
-    Find --> Merge
-    Merge --> Cleanup[Cleanup Temp PDFs]
+    Convert --> CheckSize
+    CheckSize -->|Yes| StreamMerge
+    CheckSize -->|No| StandardMerge
+    StreamMerge --> Metrics
+    StandardMerge --> Metrics
+    Metrics --> Cleanup[Cleanup Temp PDFs]
     Cleanup --> Merged
-    Merge --> Log
+    Metrics --> Results
+    Results --> Log
 ```
+
+#### Excel Conversion with Pagination Flow
+
+```mermaid
+flowchart TD
+    Start([Excel File]) --> LoadExcel[Load Excel with openpyxl]
+    LoadExcel --> ReadData[Read All Rows<br/>from Active Sheet]
+    ReadData --> CheckEmpty{Empty<br/>Sheet?}
+    CheckEmpty -->|Yes| CreateEmpty[Create Empty PDF]
+    CheckEmpty -->|No| CalculateWidths[Calculate Column Widths<br/>Auto-Size Based on Content]
+    CalculateWidths --> CheckWide{Table Width<br/>> max_cols_per_page?}
+    CheckWide -->|Yes| SplitTable[Split Table<br/>Across Multiple Pages]
+    CheckWide -->|No| CreateTable[Create Single Table]
+    SplitTable --> CreatePages[Create Multiple Tables<br/>One per Page]
+    CreatePages --> StyleTables[Apply Styling<br/>Headers, Borders, Colors<br/>Alternating Rows]
+    CreateTable --> StyleTables
+    StyleTables --> BuildPDF[Build PDF Document<br/>with reportlab]
+    CreateEmpty --> BuildPDF
+    BuildPDF --> SavePDF[Save PDF File]
+    SavePDF --> End([PDF Ready])
+```
+
+---
+
+## Detailed Diagrams
+
+This section provides comprehensive mermaid diagrams explaining the code structure, data flow, and system behavior in detail.
 
 ---
 
@@ -546,6 +660,61 @@ The Excel converter uses a two-step process:
 
 The application supports multiple configuration sources with a clear precedence order:
 
+#### Configuration Precedence Flow
+
+```mermaid
+flowchart TD
+    Start([Application Start]) --> LoadDefaults[Load Defaults]
+    LoadDefaults --> CheckPreset{Per-Project<br/>Preset Exists?}
+    CheckPreset -->|Yes| LoadPreset[Load .pdf_merger_config.json<br/>from project directory]
+    CheckPreset -->|No| CheckUserConfig
+    LoadPreset --> CheckUserConfig{User Config<br/>File Exists?}
+    CheckUserConfig -->|Yes| LoadUserConfig[Load ~/.pdf_merger/config.json<br/>or app/config.json]
+    CheckUserConfig -->|No| CheckCLI
+    LoadUserConfig --> CheckCLI{CLI Args<br/>Provided?}
+    CheckCLI -->|Yes| ApplyCLI[Apply CLI Arguments<br/>--csv --folder --output --column]
+    CheckCLI -->|No| CheckEnv
+    ApplyCLI --> CheckEnv{Environment<br/>Variables Set?}
+    CheckEnv -->|Yes| ApplyEnv[Apply Environment Variables<br/>PDF_MERGER_*]
+    CheckEnv -->|No| FinalConfig
+    ApplyEnv --> FinalConfig[Final Configuration<br/>Merged with Precedence]
+    FinalConfig --> Validate[Validate Configuration<br/>Check Paths & Values]
+    Validate -->|Invalid| UseDefaults[Use Defaults for<br/>Invalid Values]
+    Validate -->|Valid| UseConfig[Use Validated Config]
+    UseDefaults --> UseConfig
+    UseConfig --> End([Configuration Ready])
+```
+
+#### Configuration Resolution Process
+
+```mermaid
+graph LR
+    subgraph "Configuration Sources"
+        Env[Environment Variables<br/>Highest Priority]
+        CLI[CLI Arguments]
+        UserConfig[User Config File<br/>~/.pdf_merger/config.json]
+        Preset[Per-Project Preset<br/>.pdf_merger_config.json]
+        Defaults[Default Values<br/>Lowest Priority]
+    end
+    
+    subgraph "Resolution"
+        Merge[Merge with Precedence<br/>Higher Overrides Lower]
+        Validate[Validate Values<br/>Paths, Column Names]
+    end
+    
+    subgraph "Result"
+        Final[Final AppConfig<br/>Ready to Use]
+    end
+    
+    Env --> Merge
+    CLI --> Merge
+    UserConfig --> Merge
+    Preset --> Merge
+    Defaults --> Merge
+    Merge --> Validate
+    Validate --> Final
+```
+
 **Configuration Precedence** (highest to lowest):
 1. **Environment Variables** - `PDF_MERGER_INPUT_FILE`, `PDF_MERGER_SOURCE_DIR`, `PDF_MERGER_OUTPUT_DIR`, `PDF_MERGER_COLUMN`
 2. **CLI Arguments** - Command-line flags override config files
@@ -573,6 +742,90 @@ See `docs/CONFIGURATION.md` for detailed configuration documentation.
 
 The application uses explicit domain models for type safety and better contracts:
 
+#### Domain Model Relationships
+
+```mermaid
+classDiagram
+    class Row {
+        +int row_index
+        +dict raw_data
+        +str serial_numbers_str
+        +List[str] serial_numbers
+        +str required_column
+        +from_raw_data() Row
+        +has_serial_numbers() bool
+    }
+    
+    class MergeJob {
+        +Path input_file
+        +Path source_folder
+        +Path output_folder
+        +str required_column
+        +List[Row] rows
+        +str job_id
+        +dict metadata
+        +create() MergeJob
+        +add_row(Row)
+        +get_total_rows() int
+    }
+    
+    class RowResult {
+        +int row_index
+        +RowStatus status
+        +Path output_file
+        +List[Path] files_found
+        +List[str] files_missing
+        +str error_message
+        +float processing_time
+        +is_success() bool
+    }
+    
+    class MergeResult {
+        +int total_rows
+        +int successful_merges
+        +List[int] failed_rows
+        +List[int] skipped_rows
+        +List[RowResult] row_results
+        +str job_id
+        +float total_processing_time
+        +add_row_result(RowResult)
+        +get_success_rate() float
+    }
+    
+    class RowStatus {
+        <<enumeration>>
+        SUCCESS
+        FAILED
+        SKIPPED
+        PARTIAL
+    }
+    
+    MergeJob "1" --> "*" Row : contains
+    MergeResult "1" --> "*" RowResult : contains
+    RowResult --> RowStatus : uses
+    Row --> MergeJob : processed by
+    RowResult --> Row : result of
+```
+
+#### Domain Model Flow
+
+```mermaid
+flowchart TD
+    Start([Input File]) --> ReadFile[FileReader.read_data_file]
+    ReadFile --> CreateRow[Row.from_raw_data<br/>Parse & Validate Serial Numbers]
+    CreateRow --> AddToJob[MergeJob.add_row]
+    AddToJob --> MoreRows{More Rows?}
+    MoreRows -->|Yes| CreateRow
+    MoreRows -->|No| ProcessJob[process_job<br/>MergeJob]
+    ProcessJob --> ProcessRow[process_row_with_models<br/>Row]
+    ProcessRow --> CreateResult[RowResult<br/>Status, Files, Time]
+    CreateResult --> AddResult[MergeResult.add_row_result]
+    AddResult --> MoreRows2{More Rows?}
+    MoreRows2 -->|Yes| ProcessRow
+    MoreRows2 -->|No| FinalResult[MergeResult<br/>Complete Statistics]
+    FinalResult --> End([Return Results])
+```
+
 **Models** (`pdf_merger/models/`):
 - **`Row`**: Represents a single row from input data
   - Parses and validates serial numbers
@@ -598,6 +851,58 @@ The application uses explicit domain models for type safety and better contracts
 
 The application uses formal matching rules for deterministic file finding:
 
+#### Matching Algorithm Flow
+
+```mermaid
+flowchart TD
+    Start([Serial Number Input]) --> Normalize[Normalize Unicode<br/>NFC Normalization]
+    Normalize --> LowerCase[Convert to Lowercase]
+    LowerCase --> SearchDir[Search Directory<br/>Iterate All Files]
+    SearchDir --> CheckExt{File Extension<br/>Supported?}
+    CheckExt -->|No| NextFile[Next File]
+    CheckExt -->|Yes| ExactMatch{Exact Match?<br/>Case-Insensitive}
+    ExactMatch -->|Yes| AddExact[Add to Exact Matches<br/>Confidence: EXACT]
+    ExactMatch -->|No| StemMatch{Stem Match?<br/>Filename without Extension}
+    StemMatch -->|Yes| AddStem[Add to Stem Matches<br/>Confidence: STEM]
+    StemMatch -->|No| NextFile
+    AddExact --> SortMatches[Sort All Matches<br/>Alphabetically by Full Path]
+    AddStem --> SortMatches
+    NextFile --> MoreFiles{More Files?}
+    MoreFiles -->|Yes| CheckExt
+    MoreFiles -->|No| SortMatches
+    SortMatches --> CheckAmbiguous{Multiple<br/>Matches?}
+    CheckAmbiguous -->|Yes| AmbiguousBehavior{Behavior<br/>Mode?}
+    CheckAmbiguous -->|No| ReturnMatch[Return Single Match]
+    AmbiguousBehavior -->|FAIL_FAST| RaiseError[Raise ValueError<br/>Prevent Silent Wrong Merge]
+    AmbiguousBehavior -->|WARN_FIRST| LogWarning[Log Warning<br/>Use First Match]
+    AmbiguousBehavior -->|LOG_ALL| LogAll[Log All Matches<br/>Use First Match]
+    LogWarning --> ReturnMatch
+    LogAll --> ReturnMatch
+    ReturnMatch --> End([Return MatchResult])
+    RaiseError --> End
+```
+
+#### Matching Rules Decision Tree
+
+```mermaid
+graph TD
+    Input[Filename: GRNW_12345] --> Step1[1. Try Exact Match<br/>Case-Insensitive]
+    Step1 -->|Found| Exact[GRNW_12345.pdf<br/>GRNW_12345.xlsx<br/>Confidence: EXACT]
+    Step1 -->|Not Found| Step2[2. Try Stem Match<br/>Filename without Extension]
+    Step2 -->|Found| Stem[GRNW_12345_v2.pdf<br/>GRNW_12345_final.xlsx<br/>Confidence: STEM]
+    Step2 -->|Not Found| NoMatch[No Match Found<br/>Return None]
+    Exact --> Multiple{Multiple<br/>Matches?}
+    Stem --> Multiple
+    Multiple -->|Yes| Sort[Sort Alphabetically<br/>by Full Path]
+    Multiple -->|No| Return[Return Match]
+    Sort --> Behavior{Behavior<br/>Mode?}
+    Behavior -->|FAIL_FAST| Error[Raise ValueError]
+    Behavior -->|WARN_FIRST| Warn[Log Warning<br/>Use First]
+    Behavior -->|LOG_ALL| Log[Log All<br/>Use First]
+    Warn --> Return
+    Log --> Return
+```
+
 **Matching System** (`pdf_merger/matching/`):
 - **Formal Specification**: Documented matching algorithm with examples
 - **Priority Order**:
@@ -622,6 +927,60 @@ See `pdf_merger/matching/spec.md` and `docs/MATCHING_RULES.md` for detailed spec
 
 The application handles path differences between Windows, macOS, and Linux:
 
+#### Path Handling Flow
+
+```mermaid
+flowchart TD
+    Start([Path Input]) --> Resolve[Resolve to Absolute Path]
+    Resolve --> NormalizeUnicode[Normalize Unicode<br/>NFC Normalization]
+    NormalizeUnicode --> CheckPlatform{Platform?}
+    CheckPlatform -->|Windows| WindowsPath[Case-Insensitive<br/>Comparison]
+    CheckPlatform -->|macOS| MacPath[NFD to NFC<br/>Case-Sensitive]
+    CheckPlatform -->|Linux| LinuxPath[Case-Sensitive<br/>NFC]
+    WindowsPath --> CheckLong{Path Length<br/>> 260 chars?}
+    MacPath --> ValidatePath[Validate Path<br/>Existence, Type]
+    LinuxPath --> ValidatePath
+    CheckLong -->|Yes| CheckLongEnabled{Long Path<br/>Enabled?}
+    CheckLong -->|No| ValidatePath
+    CheckLongEnabled -->|Yes| UseLongPath[Use Long Path Prefix<br/>\\\\?\\]
+    CheckLongEnabled -->|No| WarnLong[Log Warning<br/>May Fail]
+    UseLongPath --> ValidatePath
+    WarnLong --> ValidatePath
+    ValidatePath --> End([Normalized Path])
+```
+
+#### Cross-Platform Path Comparison
+
+```mermaid
+graph LR
+    subgraph "Windows"
+        WinPath1[C:\Users\Test\file.pdf]
+        WinPath2[C:\users\test\FILE.PDF]
+        WinCompare[Case-Insensitive<br/>Match: True]
+    end
+    
+    subgraph "macOS"
+        MacPath1[/Users/Test/café.pdf]
+        MacPath2[/Users/Test/café.pdf]
+        MacNormalize[NFC Normalization<br/>Both: café.pdf]
+        MacCompare[Case-Sensitive<br/>Match: True]
+    end
+    
+    subgraph "Linux"
+        LinuxPath1[/home/user/file.pdf]
+        LinuxPath2[/home/user/FILE.PDF]
+        LinuxCompare[Case-Sensitive<br/>Match: False]
+    end
+    
+    WinPath1 --> WinCompare
+    WinPath2 --> WinCompare
+    MacPath1 --> MacNormalize
+    MacPath2 --> MacNormalize
+    MacNormalize --> MacCompare
+    LinuxPath1 --> LinuxCompare
+    LinuxPath2 --> LinuxCompare
+```
+
 **Path Utilities** (`pdf_merger/utils/path_utils.py`):
 - **Case Sensitivity**: Case-insensitive comparison on Windows, case-sensitive on Unix
 - **Unicode Normalization**: NFC normalization (handles macOS NFD)
@@ -636,6 +995,68 @@ The application handles path differences between Windows, macOS, and Linux:
 ### Observability
 
 The application includes opt-in observability features:
+
+#### Observability Architecture
+
+```mermaid
+graph TB
+    subgraph "Application Components"
+        Processor[Processor]
+        PDFOps[PDF Operations]
+        ExcelConv[Excel Converter]
+        Main[main.py]
+    end
+    
+    subgraph "Observability Layer"
+        Metrics[Metrics Collector<br/>Counters, Timers, Gauges]
+        Telemetry[Telemetry Service<br/>Opt-in Anonymous Stats]
+        CrashReporter[Crash Reporter<br/>Opt-in Stack Traces]
+    end
+    
+    subgraph "Data Collection"
+        MetricsData[Processing Time<br/>File Sizes<br/>Success Rates<br/>Ambiguous Matches]
+        TelemetryData[Event Types<br/>System Info<br/>No Personal Data]
+        CrashData[Stack Traces<br/>Context Info<br/>System Info]
+    end
+    
+    Processor --> Metrics
+    PDFOps --> Metrics
+    ExcelConv --> Metrics
+    Processor --> Telemetry
+    Main --> CrashReporter
+    Metrics --> MetricsData
+    Telemetry --> TelemetryData
+    CrashReporter --> CrashData
+```
+
+#### Observability Flow
+
+```mermaid
+flowchart TD
+    Start([Application Start]) --> LoadConfig[Load Configuration]
+    LoadConfig --> CheckMetrics{Metrics<br/>Enabled?}
+    CheckMetrics -->|Yes| InitMetrics[Initialize Metrics Collector]
+    CheckMetrics -->|No| CheckTelemetry
+    InitMetrics --> CheckTelemetry{Telemetry<br/>Enabled?}
+    CheckTelemetry -->|Yes| InitTelemetry[Initialize Telemetry Service]
+    CheckTelemetry -->|No| CheckCrash
+    InitTelemetry --> CheckCrash{Crash Reporting<br/>Enabled?}
+    CheckCrash -->|Yes| InitCrash[Initialize Crash Reporter<br/>Install Exception Hook]
+    CheckCrash -->|No| Process
+    InitCrash --> Process[Process Merge Job]
+    Process --> RecordCounter[Record Counter Metrics<br/>rows_successful<br/>files_found<br/>ambiguous_matches]
+    Process --> RecordTimer[Record Timer Metrics<br/>row_processing_time<br/>job_processing_time]
+    Process --> RecordGauge[Record Gauge Metrics<br/>output_file_size_mb<br/>job_success_rate]
+    RecordCounter --> RecordEvent[Record Telemetry Event<br/>merge_completed]
+    RecordTimer --> RecordEvent
+    RecordGauge --> RecordEvent
+    RecordEvent --> CheckException{Exception<br/>Occurred?}
+    CheckException -->|Yes| ReportCrash[Report Crash<br/>Save Stack Trace]
+    CheckException -->|No| FlushTelemetry[Flush Telemetry<br/>Events]
+    ReportCrash --> FlushTelemetry
+    FlushTelemetry --> GetSummary[Get Metrics Summary]
+    GetSummary --> End([Observability Complete])
+```
 
 **Observability Package** (`pdf_merger/observability/`):
 - **Metrics** (`metrics.py`):
