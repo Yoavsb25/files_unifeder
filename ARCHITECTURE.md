@@ -31,7 +31,7 @@ PDF Batch Merger is a desktop application built with Python that merges multiple
 - **Multiple Input Formats**: Supports CSV and Excel files
 - **Mixed File Support**: Can merge PDF and Excel files together (Excel files are converted to PDF)
 - **Formal Matching Rules**: Deterministic file matching with ambiguity detection and Unicode normalization
-- **Configuration Management**: Multi-source configuration with precedence (env vars > CLI > config > presets > defaults)
+- **Configuration Management**: Multi-source configuration with precedence (env vars > config > presets > defaults)
 - **Domain Models**: Explicit type-safe models for rows, jobs, and results
 - **Cross-Platform Support**: Handles Windows/macOS path differences (case sensitivity, Unicode, long paths)
 - **Memory Efficiency**: Streaming mode for large PDF merging
@@ -48,7 +48,6 @@ PDF Batch Merger is a desktop application built with Python that merges multiple
 graph TB
     subgraph "User Interface Layer"
         GUI[GUI Application<br/>CustomTkinter]
-        CLI[CLI Interface<br/>Optional]
     end
     
     subgraph "Application Layer"
@@ -86,7 +85,6 @@ graph TB
     end
     
     GUI --> Main
-    CLI --> Main
     Main --> License
     License --> Core
     Core --> Processor
@@ -213,10 +211,6 @@ files_unifeder/
 │       ├── license_manager.py  # License validation with UX improvements
 │       ├── license_model.py    # License data model with expiry warnings
 │       └── license_signer.py   # RSA signing/verification
-│
-├── cli/                         # Command-line interfaces (optional)
-│   ├── command_line.py         # CLI with arguments
-│   └── interactive.py          # Interactive prompts
 │
 ├── tests/                       # Test suite
 │   ├── test_*.py               # Unit tests for each module
@@ -670,11 +664,8 @@ flowchart TD
     CheckPreset -->|No| CheckUserConfig
     LoadPreset --> CheckUserConfig{User Config<br/>File Exists?}
     CheckUserConfig -->|Yes| LoadUserConfig[Load ~/.pdf_merger/config.json<br/>or app/config.json]
-    CheckUserConfig -->|No| CheckCLI
-    LoadUserConfig --> CheckCLI{CLI Args<br/>Provided?}
-    CheckCLI -->|Yes| ApplyCLI[Apply CLI Arguments<br/>--csv --folder --output --column]
-    CheckCLI -->|No| CheckEnv
-    ApplyCLI --> CheckEnv{Environment<br/>Variables Set?}
+    CheckUserConfig -->|No| CheckEnv
+    LoadUserConfig --> CheckEnv{Environment<br/>Variables Set?}
     CheckEnv -->|Yes| ApplyEnv[Apply Environment Variables<br/>PDF_MERGER_*]
     CheckEnv -->|No| FinalConfig
     ApplyEnv --> FinalConfig[Final Configuration<br/>Merged with Precedence]
@@ -691,7 +682,6 @@ flowchart TD
 graph LR
     subgraph "Configuration Sources"
         Env[Environment Variables<br/>Highest Priority]
-        CLI[CLI Arguments]
         UserConfig[User Config File<br/>~/.pdf_merger/config.json]
         Preset[Per-Project Preset<br/>.pdf_merger_config.json]
         Defaults[Default Values<br/>Lowest Priority]
@@ -707,7 +697,6 @@ graph LR
     end
     
     Env --> Merge
-    CLI --> Merge
     UserConfig --> Merge
     Preset --> Merge
     Defaults --> Merge
@@ -717,10 +706,9 @@ graph LR
 
 **Configuration Precedence** (highest to lowest):
 1. **Environment Variables** - `PDF_MERGER_INPUT_FILE`, `PDF_MERGER_SOURCE_DIR`, `PDF_MERGER_OUTPUT_DIR`, `PDF_MERGER_COLUMN`
-2. **CLI Arguments** - Command-line flags override config files
-3. **User Config File** - `~/.pdf_merger/config.json` or `config.json` in app directory
-4. **Per-Project Preset** - `.pdf_merger_config.json` in project directory (searched up directory tree)
-5. **Defaults** - Built-in default values
+2. **User Config File** - `~/.pdf_merger/config.json` or `config.json` in app directory
+3. **Per-Project Preset** - `.pdf_merger_config.json` in project directory (searched up directory tree)
+4. **Defaults** - Built-in default values
 
 **Configuration Components**:
 - `config.py` - Main configuration management with precedence resolution
@@ -732,7 +720,6 @@ graph LR
 
 **Use Cases**:
 - Environment variables for CI/CD and automated workflows
-- CLI arguments for one-off operations
 - User config file for personal defaults
 - Per-project presets for project-specific settings
 
@@ -1121,7 +1108,7 @@ Current version: **1.1.0**
 ### Recent Changes (v1.1.0)
 
 **Major Enhancements:**
-- **Configuration Management**: Multi-source configuration with precedence (env vars > CLI > config > presets > defaults)
+- **Configuration Management**: Multi-source configuration with precedence (env vars > config > presets > defaults)
 - **Domain Models**: Explicit type-safe models (Row, MergeJob, MergeResult) for better contracts
 - **Formal Matching Rules**: Deterministic file matching with ambiguity detection and Unicode normalization
 - **Cross-Platform Path Handling**: Handles Windows/macOS differences (case sensitivity, Unicode, long paths)

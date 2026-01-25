@@ -7,10 +7,9 @@ This document describes how to configure PDF Batch Merger using various configur
 Configuration values are resolved in the following order (highest to lowest priority):
 
 1. **Environment Variables** (highest priority)
-2. **CLI Arguments**
-3. **User Config File** (`~/.pdf_merger/config.json` or `config.json` in app directory)
-4. **Per-Project Preset** (`.pdf_merger_config.json` in project directory)
-5. **Defaults** (lowest priority)
+2. **User Config File** (`~/.pdf_merger/config.json` or `config.json` in app directory)
+3. **Per-Project Preset** (`.pdf_merger_config.json` in project directory)
+4. **Defaults** (lowest priority)
 
 Values from higher priority sources override values from lower priority sources.
 
@@ -40,20 +39,6 @@ set PDF_MERGER_SOURCE_DIR=C:\path\to\source\files
 set PDF_MERGER_OUTPUT_DIR=C:\path\to\output
 set PDF_MERGER_COLUMN=serial_numbers
 ```
-
-## CLI Arguments
-
-Command-line arguments can override environment variables and config files:
-
-```bash
-python -m cli.command_line \
-    --csv /path/to/data.csv \
-    --folder /path/to/source/files \
-    --output /path/to/output \
-    --column serial_numbers
-```
-
-If environment variables are set, CLI arguments will override them.
 
 ## User Config File
 
@@ -113,11 +98,12 @@ Invalid values are logged as warnings and the default value is used instead.
 
 ```bash
 # Set environment variables
+export PDF_MERGER_INPUT_FILE="/data/input.csv"
 export PDF_MERGER_SOURCE_DIR="/data/source"
 export PDF_MERGER_OUTPUT_DIR="/data/output"
 
-# Run with CLI arguments (env vars provide defaults)
-python -m cli.command_line --csv /data/input.csv
+# Launch the GUI application - it will use the environment variables
+# to pre-populate the file selection fields
 ```
 
 ### Example 2: Using Per-Project Preset
@@ -131,9 +117,10 @@ cat > .pdf_merger_config.json << EOF
 }
 EOF
 
-# Run from project directory (preset is automatically loaded)
+# Launch the GUI application from the project directory
+# The preset will be automatically loaded and used to pre-populate fields
 cd /path/to/project
-python -m cli.command_line --csv data.csv
+# Then launch PDF Batch Merger
 ```
 
 ### Example 3: Full Configuration Stack
@@ -146,26 +133,21 @@ python -m cli.command_line --csv data.csv
 # ~/.pdf_merger/config.json: { "output_dir": "~/output" }
 
 # 3. Environment variable overrides user config
+export PDF_MERGER_INPUT_FILE="/data/input.csv"
 export PDF_MERGER_OUTPUT_DIR="/tmp/output"
-
-# 4. CLI argument overrides everything
-python -m cli.command_line \
-    --csv data.csv \
-    --folder /custom/source \
-    --output /custom/output
 ```
 
-Final configuration:
-- `input_file`: `data.csv` (from CLI)
-- `pdf_dir`: `/custom/source` (from CLI, overrides preset)
-- `output_dir`: `/custom/output` (from CLI, overrides env var and user config)
+Final configuration (when GUI launches):
+- `input_file`: `/data/input.csv` (from environment variable)
+- `pdf_dir`: `./source` (from per-project preset)
+- `output_dir`: `/tmp/output` (from environment variable, overrides user config)
 - `required_column`: `serial_numbers` (default)
+
+The GUI will pre-populate these values when launched.
 
 ## GUI Application
 
-The GUI application currently uses manual file selection dialogs. Configuration files and environment variables can be used to set default values, but the GUI will still prompt for file selection if values are not provided.
-
-Future versions may support loading configuration in the GUI to pre-populate file selection fields.
+The GUI application automatically loads configuration on startup and pre-populates file selection fields when values are available from configuration sources (environment variables, config files, or per-project presets). Users can still modify these values through the file selection dialogs if needed.
 
 ## Troubleshooting
 

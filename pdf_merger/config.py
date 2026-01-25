@@ -4,10 +4,9 @@ Handles loading and saving application configuration with precedence support.
 
 Configuration Precedence (highest to lowest):
 1. Environment variables
-2. CLI arguments
-3. User config file (~/.pdf_merger/config.json or app directory)
-4. Per-project preset (.pdf_merger_config.json in project directory)
-5. Defaults
+2. User config file (~/.pdf_merger/config.json or app directory)
+3. Per-project preset (.pdf_merger_config.json in project directory)
+4. Defaults
 """
 
 import json
@@ -226,10 +225,6 @@ def load_env_config() -> AppConfig:
 
 
 def load_config(
-    cli_input_file: Optional[str] = None,
-    cli_source_dir: Optional[str] = None,
-    cli_output_dir: Optional[str] = None,
-    cli_column: Optional[str] = None,
     start_path: Optional[Path] = None
 ) -> AppConfig:
     """
@@ -237,16 +232,11 @@ def load_config(
     
     Precedence order (highest to lowest):
     1. Environment variables
-    2. CLI arguments
-    3. User config file
-    4. Per-project preset
-    5. Defaults
+    2. User config file
+    3. Per-project preset
+    4. Defaults
     
     Args:
-        cli_input_file: CLI argument for input file
-        cli_source_dir: CLI argument for source directory
-        cli_output_dir: CLI argument for output directory
-        cli_column: CLI argument for column name
         start_path: Starting path for project preset search
         
     Returns:
@@ -255,30 +245,14 @@ def load_config(
     # Start with defaults
     config = AppConfig()
     
-    # 4. Load per-project preset (lowest priority)
+    # 3. Load per-project preset (lowest priority)
     project_preset = load_project_preset(start_path)
     if project_preset:
         config = config.merge(project_preset)
     
-    # 3. Load user config file
+    # 2. Load user config file
     user_config = load_user_config()
     config = config.merge(user_config)
-    
-    # 2. Apply CLI arguments
-    cli_data = {}
-    if cli_input_file:
-        cli_data['input_file'] = cli_input_file
-    if cli_source_dir:
-        cli_data['pdf_dir'] = cli_source_dir
-    if cli_output_dir:
-        cli_data['output_dir'] = cli_output_dir
-    if cli_column:
-        cli_data['required_column'] = cli_column
-    
-    if cli_data:
-        validated_data = ConfigSchema.validate_config(cli_data)
-        cli_config = AppConfig.from_dict(validated_data)
-        config = config.merge(cli_config)
     
     # 1. Apply environment variables (highest priority)
     env_config = load_env_config()
