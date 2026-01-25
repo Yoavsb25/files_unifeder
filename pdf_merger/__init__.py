@@ -5,6 +5,7 @@ A modular package for merging PDFs based on serial numbers from CSV/Excel files.
 
 __version__ = '1.0.0'
 APP_VERSION = '1.0.0'  # Application version for licensing and display
+APP_NAME = 'PDF Batch Merger'  # Application name for UI display
 
 # Import main functions for easy access
 from .processor import process_file, ProcessingResult
@@ -23,8 +24,9 @@ from .exceptions import (
 
 # Public API - functions intended for external use
 __all__ = [
-    # Version
+    # Version and App Info
     'APP_VERSION',
+    'APP_NAME',
     # Main processing
     'process_file',
     'ProcessingResult',

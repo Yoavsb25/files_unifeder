@@ -2,21 +2,20 @@
 CustomTkinter GUI application for PDF Merger.
 """
 
-import threading
-import tkinter.filedialog as filedialog
 from pathlib import Path
 from typing import Optional
 
 import customtkinter as ctk
 
 from .. import APP_VERSION
-from ..core import run_merge, format_result_summary
-from ..licensing import LicenseManager, LicenseStatus
+from ..licensing import LicenseManager
 from ..logger import get_logger, setup_logger
 from ..processor import ProcessingResult
-from ..validators import validate_file, validate_folder
-from ..exceptions import PDFMergerError
 from ..config import load_config
+from .components import FileSelector, LicenseFrame, LogArea, Footer
+from .license_ui import update_license_display
+from .handlers import FileSelectionHandler, MergeHandler
+from .enums import StatusColor
 
 # Setup logging
 setup_logger("pdf_merger", level=20)
@@ -25,28 +24,8 @@ logger = get_logger("ui.app")
 # Set CustomTkinter appearance
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
+
 APP_NAME = "PDF Batch Merger"
-
-
-class LogHandler:
-    """Custom log handler that writes to GUI text widget."""
-    
-    def __init__(self, text_widget):
-        self.text_widget = text_widget
-        self.buffer = []
-    
-    def write(self, message: str):
-        """Write log message to buffer."""
-        if message.strip():
-            self.buffer.append(message.strip())
-    
-    def flush(self):
-        """Flush buffer to text widget."""
-        if self.buffer:
-            text = "\n".join(self.buffer)
-            self.text_widget.insert("end", text + "\n")
-            self.text_widget.see("end")
-            self.buffer.clear()
 
 
 class PDFMergerApp(ctk.CTk):
@@ -68,11 +47,11 @@ class PDFMergerApp(ctk.CTk):
         self.pdf_dir_path: Optional[Path] = None
         self.output_dir_path: Optional[Path] = None
         
-        # Processing state
-        self.is_processing = False
-        
-        # Load configuration with precedence
+        # Load configuration
         self.config = load_config(start_path=Path.cwd())
+        
+        # Initialize handlers
+        self._init_handlers()
         
         # Build UI
         self._build_ui()
@@ -82,6 +61,18 @@ class PDFMergerApp(ctk.CTk):
         
         # Check license
         self._check_license()
+    
+    def _init_handlers(self):
+        """Initialize event handlers."""
+        self.file_handler = FileSelectionHandler(
+            on_error=self._show_error
+        )
+        
+        self.merge_handler = MergeHandler(
+            on_start=self._on_merge_start,
+            on_complete=self._on_merge_complete,
+            on_error=self._on_merge_error
+        )
     
     def _build_ui(self):
         """Build the user interface."""
@@ -98,102 +89,36 @@ class PDFMergerApp(ctk.CTk):
         title_label.pack(pady=(0, 20))
         
         # License status frame
-        self.license_frame = ctk.CTkFrame(main_frame)
+        self.license_frame = LicenseFrame(main_frame)
         self.license_frame.pack(fill="x", pady=(0, 20))
-        self.license_label = ctk.CTkLabel(
-            self.license_frame,
-            text="Checking license...",
-            font=ctk.CTkFont(size=12)
-        )
-        self.license_label.pack(pady=10)
         
         # File selection frame
         file_frame = ctk.CTkFrame(main_frame)
         file_frame.pack(fill="x", pady=(0, 10))
         
-        # Input file
-        input_frame = ctk.CTkFrame(file_frame)
-        input_frame.pack(fill="x", padx=10, pady=10)
-        
-        ctk.CTkLabel(
-            input_frame,
-            text="CSV/Excel File:",
-            font=ctk.CTkFont(size=12, weight="bold")
-        ).pack(anchor="w", pady=(0, 5))
-        
-        input_button_frame = ctk.CTkFrame(input_frame)
-        input_button_frame.pack(fill="x")
-        
-        self.input_file_label = ctk.CTkLabel(
-            input_button_frame,
-            text="No file selected",
-            anchor="w",
-            font=ctk.CTkFont(size=11)
+        # Input file selector
+        self.input_file_selector = FileSelector(
+            file_frame,
+            label_text="CSV/Excel File:",
+            on_select=self._select_input_file
         )
-        self.input_file_label.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        self.input_file_selector.pack(fill="x", padx=10, pady=10)
         
-        ctk.CTkButton(
-            input_button_frame,
-            text="Browse...",
-            command=self._select_input_file,
-            width=100
-        ).pack(side="right")
-        
-        # PDF directory
-        pdf_frame = ctk.CTkFrame(file_frame)
-        pdf_frame.pack(fill="x", padx=10, pady=10)
-        
-        ctk.CTkLabel(
-            pdf_frame,
-            text="Source Directory:",
-            font=ctk.CTkFont(size=12, weight="bold")
-        ).pack(anchor="w", pady=(0, 5))
-        
-        pdf_button_frame = ctk.CTkFrame(pdf_frame)
-        pdf_button_frame.pack(fill="x")
-        
-        self.pdf_dir_label = ctk.CTkLabel(
-            pdf_button_frame,
-            text="No directory selected",
-            anchor="w",
-            font=ctk.CTkFont(size=11)
+        # PDF directory selector
+        self.pdf_dir_selector = FileSelector(
+            file_frame,
+            label_text="Source Directory:",
+            on_select=self._select_pdf_directory
         )
-        self.pdf_dir_label.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        self.pdf_dir_selector.pack(fill="x", padx=10, pady=10)
         
-        ctk.CTkButton(
-            pdf_button_frame,
-            text="Browse...",
-            command=self._select_pdf_directory,
-            width=100
-        ).pack(side="right")
-        
-        # Output directory
-        output_frame = ctk.CTkFrame(file_frame)
-        output_frame.pack(fill="x", padx=10, pady=10)
-        
-        ctk.CTkLabel(
-            output_frame,
-            text="Output Directory:",
-            font=ctk.CTkFont(size=12, weight="bold")
-        ).pack(anchor="w", pady=(0, 5))
-        
-        output_button_frame = ctk.CTkFrame(output_frame)
-        output_button_frame.pack(fill="x")
-        
-        self.output_dir_label = ctk.CTkLabel(
-            output_button_frame,
-            text="No directory selected",
-            anchor="w",
-            font=ctk.CTkFont(size=11)
+        # Output directory selector
+        self.output_dir_selector = FileSelector(
+            file_frame,
+            label_text="Output Directory:",
+            on_select=self._select_output_directory
         )
-        self.output_dir_label.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        
-        ctk.CTkButton(
-            output_button_frame,
-            text="Browse...",
-            command=self._select_output_directory,
-            width=100
-        ).pack(side="right")
+        self.output_dir_selector.pack(fill="x", padx=10, pady=10)
         
         # Run button
         self.run_button = ctk.CTkButton(
@@ -206,90 +131,19 @@ class PDFMergerApp(ctk.CTk):
         self.run_button.pack(fill="x", pady=(10, 10))
         
         # Log/output area
-        log_frame = ctk.CTkFrame(main_frame)
-        log_frame.pack(fill="both", expand=True, pady=(0, 10))
+        self.log_area = LogArea(main_frame)
+        self.log_area.pack(fill="both", expand=True, pady=(0, 10))
         
-        ctk.CTkLabel(
-            log_frame,
-            text="Output Log:",
-            font=ctk.CTkFont(size=12, weight="bold")
-        ).pack(anchor="w", padx=10, pady=(10, 5))
-        
-        self.log_text = ctk.CTkTextbox(
-            log_frame,
-            font=ctk.CTkFont(size=11),
-            wrap="word"
-        )
-        self.log_text.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-        
-        # Footer with version
-        footer_frame = ctk.CTkFrame(main_frame)
-        footer_frame.pack(fill="x")
-        
-        version_label = ctk.CTkLabel(
-            footer_frame,
-            text=f"{APP_NAME} v{APP_VERSION}",
-            font=ctk.CTkFont(size=10),
-            anchor="w"
-        )
-        version_label.pack(side="left", padx=10, pady=5)
-        
-        self.status_label = ctk.CTkLabel(
-            footer_frame,
-            text="Ready",
-            font=ctk.CTkFont(size=10),
-            anchor="e"
-        )
-        self.status_label.pack(side="right", padx=10, pady=5)
+        # Footer
+        self.footer = Footer(main_frame)
+        self.footer.pack(fill="x")
     
     def _check_license(self):
         """Check license status and update UI."""
-        status = self.license_manager.get_license_status()
-        self.license_valid = (status == LicenseStatus.VALID)
-        
-        if status == LicenseStatus.VALID:
-            info = self.license_manager.get_license_info()
-            if info:
-                # Check for expiry warnings
-                warning_msg = self.license_manager.get_expiry_warning_message()
-                days = info.get('days_until_expiry')
-                warning_level = info.get('expiry_warning_level')
-                company_name = info.get('company')
-                
-                if warning_msg:
-                    if warning_level == 'critical':
-                        text_color = "red"
-                    elif warning_level == 'warning':
-                        text_color = "orange"
-                    else:
-                        text_color = "yellow"
-                    display_text = f"✓ Licensed to: {company_name} - {warning_msg}"
-                else:
-                    text_color = "green"
-                    display_text = f"✓ Licensed to: {company_name} (Expires: {info['expires']})"
-                
-                self.license_label.configure(
-                    text=display_text,
-                    text_color=text_color
-                )
-            else:
-                self.license_label.configure(
-                    text="✓ License valid",
-                    text_color="green"
-                )
-        elif status == LicenseStatus.EXPIRED:
-            self.license_label.configure(
-                text="⚠ License expired - Merge functionality disabled",
-                text_color="orange"
-            )
-        else:
-            error_msg = self.license_manager.get_license_error_message(status)
-            self.license_label.configure(
-                text=f"✗ {error_msg}",
-                text_color="red"
-            )
-        
-        # Enable/disable merge button based on license
+        self.license_valid = update_license_display(
+            self.license_manager,
+            self.license_frame.license_label
+        )
         self._update_ui_state()
     
     def _load_config_into_ui(self):
@@ -298,9 +152,10 @@ class PDFMergerApp(ctk.CTk):
             try:
                 path = Path(self.config.input_file)
                 if path.exists():
+                    from ..validators import validate_file
                     validate_file(path)
                     self.input_file_path = path
-                    self.input_file_label.configure(text=str(path))
+                    self.input_file_selector.set_path(str(path))
                     logger.info(f"Loaded input file from config: {path}")
             except Exception as e:
                 logger.warning(f"Could not load input file from config: {e}")
@@ -309,9 +164,10 @@ class PDFMergerApp(ctk.CTk):
             try:
                 path = Path(self.config.pdf_dir)
                 if path.exists():
+                    from ..validators import validate_folder
                     validate_folder(path, "Source")
                     self.pdf_dir_path = path
-                    self.pdf_dir_label.configure(text=str(path))
+                    self.pdf_dir_selector.set_path(str(path))
                     logger.info(f"Loaded source directory from config: {path}")
             except Exception as e:
                 logger.warning(f"Could not load source directory from config: {e}")
@@ -321,7 +177,7 @@ class PDFMergerApp(ctk.CTk):
                 path = Path(self.config.output_dir)
                 path.mkdir(parents=True, exist_ok=True)
                 self.output_dir_path = path
-                self.output_dir_label.configure(text=str(path))
+                self.output_dir_selector.set_path(str(path))
                 logger.info(f"Loaded output directory from config: {path}")
             except Exception as e:
                 logger.warning(f"Could not load output directory from config: {e}")
@@ -336,96 +192,77 @@ class PDFMergerApp(ctk.CTk):
             self.input_file_path is not None and
             self.pdf_dir_path is not None and
             self.output_dir_path is not None and
-            not self.is_processing
+            not self.merge_handler.is_processing
         )
         
         self.run_button.configure(state="normal" if can_run else "disabled")
     
+    
     def _select_input_file(self):
         """Open file dialog to select input CSV/Excel file."""
-        file_path = filedialog.askopenfilename(
-            title="Select CSV or Excel File",
-            filetypes=[
-                ("CSV/Excel files", "*.csv *.xlsx *.xls"),
-                ("CSV files", "*.csv"),
-                ("Excel files", "*.xlsx *.xls"),
-                ("All files", "*.*")
-            ]
-        )
-        
-        if file_path:
-            path = Path(file_path)
-            try:
-                validate_file(path)
-                self.input_file_path = path
-                self.input_file_label.configure(text=str(path))
-                self._log(f"Selected input file: {path.name}")
-                self._update_ui_state()
-            except PDFMergerError as e:
-                self._log(f"Error: {e}")
-                self._show_error(f"Invalid file: {e}")
+        path = self.file_handler.select_input_file()
+        if path:
+            self.input_file_path = path
+            self.input_file_selector.set_path(str(path))
+            self._log(f"Selected input file: {path.name}")
+            self._update_ui_state()
     
     def _select_pdf_directory(self):
-        """Open directory dialog to select source directory (PDF and Excel files)."""
-        dir_path = filedialog.askdirectory(title="Select Source Directory (PDF and Excel files)")
-        
-        if dir_path:
-            path = Path(dir_path)
-            try:
-                validate_folder(path, "Source")
-                self.pdf_dir_path = path
-                self.pdf_dir_label.configure(text=str(path))
-                self._log(f"Selected source directory: {path}")
-                self._update_ui_state()
-            except PDFMergerError as e:
-                self._log(f"Error: {e}")
-                self._show_error(f"Invalid directory: {e}")
+        """Open directory dialog to select source directory."""
+        path = self.file_handler.select_directory(
+            title="Select Source Directory (PDF and Excel files)",
+            validate=True,
+            folder_type="Source"
+        )
+        if path:
+            self.pdf_dir_path = path
+            self.pdf_dir_selector.set_path(str(path))
+            self._log(f"Selected source directory: {path}")
+            self._update_ui_state()
     
     def _select_output_directory(self):
         """Open directory dialog to select output directory."""
-        dir_path = filedialog.askdirectory(title="Select Output Directory")
-        
-        if dir_path:
-            path = Path(dir_path)
-            try:
-                path.mkdir(parents=True, exist_ok=True)
-                self.output_dir_path = path
-                self.output_dir_label.configure(text=str(path))
-                self._log(f"Selected output directory: {path}")
-                self._update_ui_state()
-            except Exception as e:
-                self._log(f"Error: Cannot create output directory: {e}")
-                self._show_error(f"Cannot create output directory: {e}")
+        path = self.file_handler.select_directory(
+            title="Select Output Directory",
+            validate=False
+        )
+        if path:
+            self.output_dir_path = path
+            self.output_dir_selector.set_path(str(path))
+            self._log(f"Selected output directory: {path}")
+            self._update_ui_state()
     
     def _log(self, message: str):
         """Add message to log area."""
-        self.log_text.insert("end", message + "\n")
-        self.log_text.see("end")
+        self.log_area.log(message)
         logger.info(message)
     
     def _show_error(self, message: str):
         """Show error message."""
         self._log(f"ERROR: {message}")
-        self.status_label.configure(text="Error", text_color="red")
+        self.footer.update_status("Error", StatusColor.RED)
     
     def _run_merge(self):
-        """Run the merge operation in a separate thread."""
+        """Run the merge operation."""
         if not self.license_valid:
             self._show_error("License is not valid. Cannot run merge operation.")
-            return
-        
-        if self.is_processing:
             return
         
         if not all([self.input_file_path, self.pdf_dir_path, self.output_dir_path]):
             self._show_error("Please select all required files and directories.")
             return
         
-        # Disable UI
-        self.is_processing = True
+        self.merge_handler.run_merge(
+            input_file=self.input_file_path,
+            pdf_dir=self.pdf_dir_path,
+            output_dir=self.output_dir_path
+        )
+    
+    def _on_merge_start(self):
+        """Handle merge operation start."""
         self.run_button.configure(state="disabled", text="Processing...")
-        self.status_label.configure(text="Processing...", text_color="blue")
-        self.log_text.delete("1.0", "end")
+        self.footer.update_status("Processing...", StatusColor.BLUE)
+        self.log_area.clear()
         self._log("=" * 60)
         self._log("Starting merge operation...")
         self._log("=" * 60)
@@ -433,47 +270,31 @@ class PDFMergerApp(ctk.CTk):
         self._log(f"Source directory: {self.pdf_dir_path}")
         self._log(f"Output directory: {self.output_dir_path}")
         self._log("")
-        
-        # Run in separate thread
-        thread = threading.Thread(target=self._merge_worker, daemon=True)
-        thread.start()
     
-    def _merge_worker(self):
-        """Worker thread for merge operation."""
-        try:
-            result = run_merge(
-                input_file=self.input_file_path,
-                pdf_dir=self.pdf_dir_path,
-                output_dir=self.output_dir_path
-            )
-            
-            # Update UI in main thread
-            self.after(0, self._merge_complete, result)
-        except Exception as e:
-            self.after(0, self._merge_error, str(e))
-    
-    def _merge_complete(self, result: ProcessingResult):
+    def _on_merge_complete(self, result: ProcessingResult):
         """Handle merge completion."""
-        self.is_processing = False
+        # Reset processing state
+        self.merge_handler.is_processing = False
         self.run_button.configure(state="normal", text="Run Merge")
         
         self._log("")
         self._log("=" * 60)
-        summary = format_result_summary(result)
+        summary = self.merge_handler.format_result(result)
         self._log(summary)
         
         if result.successful_merges == result.total_rows:
-            self.status_label.configure(text="Success", text_color="green")
+            self.footer.update_status("Success", StatusColor.GREEN)
         elif result.successful_merges > 0:
-            self.status_label.configure(text="Partial success", text_color="orange")
+            self.footer.update_status("Partial success", StatusColor.ORANGE)
         else:
-            self.status_label.configure(text="Failed", text_color="red")
+            self.footer.update_status("Failed", StatusColor.RED)
         
         self._update_ui_state()
     
-    def _merge_error(self, error_message: str):
+    def _on_merge_error(self, error_message: str):
         """Handle merge error."""
-        self.is_processing = False
+        # Reset processing state
+        self.merge_handler.is_processing = False
         self.run_button.configure(state="normal", text="Run Merge")
         
         self._log("")
@@ -481,7 +302,7 @@ class PDFMergerApp(ctk.CTk):
         self._log(f"ERROR: {error_message}")
         self._log("=" * 60)
         
-        self.status_label.configure(text="Error", text_color="red")
+        self.footer.update_status("Error", StatusColor.RED)
         self._update_ui_state()
 
 
