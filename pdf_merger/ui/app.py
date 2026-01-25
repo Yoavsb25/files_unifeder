@@ -10,12 +10,13 @@ from typing import Optional
 import customtkinter as ctk
 
 from .. import APP_VERSION
-from ..core import run_merge, format_result_summary, format_result_detailed
+from ..core import run_merge, format_result_summary
 from ..licensing import LicenseManager, LicenseStatus
 from ..logger import get_logger, setup_logger
 from ..processor import ProcessingResult
 from ..validators import validate_file, validate_folder
 from ..exceptions import PDFMergerError
+from ..config import load_config
 
 # Setup logging
 setup_logger("pdf_merger", level=20)  # INFO level
@@ -69,8 +70,14 @@ class PDFMergerApp(ctk.CTk):
         # Processing state
         self.is_processing = False
         
+        # Load configuration with precedence
+        self.config = load_config(start_path=Path.cwd())
+        
         # Build UI
         self._build_ui()
+        
+        # Load config values into UI if available
+        self._load_config_into_ui()
         
         # Check license
         self._check_license()
@@ -242,9 +249,26 @@ class PDFMergerApp(ctk.CTk):
         if status == LicenseStatus.VALID:
             info = self.license_manager.get_license_info()
             if info:
+                # Check for expiry warnings
+                warning_msg = self.license_manager.get_expiry_warning_message()
+                days = info.get('days_until_expiry')
+                warning_level = info.get('expiry_warning_level')
+                
+                if warning_msg:
+                    if warning_level == 'critical':
+                        text_color = "red"
+                    elif warning_level == 'warning':
+                        text_color = "orange"
+                    else:
+                        text_color = "yellow"
+                    display_text = f"✓ Licensed to: {info['company']} - {warning_msg}"
+                else:
+                    text_color = "green"
+                    display_text = f"✓ Licensed to: {info['company']} (Expires: {info['expires']})"
+                
                 self.license_label.configure(
-                    text=f"✓ Licensed to: {info['company']} (Expires: {info['expires']})",
-                    text_color="green"
+                    text=display_text,
+                    text_color=text_color
                 )
             else:
                 self.license_label.configure(
@@ -264,6 +288,43 @@ class PDFMergerApp(ctk.CTk):
             )
         
         # Enable/disable merge button based on license
+        self._update_ui_state()
+    
+    def _load_config_into_ui(self):
+        """Load configuration values into UI fields if available."""
+        if self.config.input_file:
+            try:
+                path = Path(self.config.input_file)
+                if path.exists():
+                    validate_file(path)
+                    self.input_file_path = path
+                    self.input_file_label.configure(text=str(path))
+                    logger.info(f"Loaded input file from config: {path}")
+            except Exception as e:
+                logger.warning(f"Could not load input file from config: {e}")
+        
+        if self.config.pdf_dir:
+            try:
+                path = Path(self.config.pdf_dir)
+                if path.exists():
+                    validate_folder(path, "Source")
+                    self.pdf_dir_path = path
+                    self.pdf_dir_label.configure(text=str(path))
+                    logger.info(f"Loaded source directory from config: {path}")
+            except Exception as e:
+                logger.warning(f"Could not load source directory from config: {e}")
+        
+        if self.config.output_dir:
+            try:
+                path = Path(self.config.output_dir)
+                path.mkdir(parents=True, exist_ok=True)
+                self.output_dir_path = path
+                self.output_dir_label.configure(text=str(path))
+                logger.info(f"Loaded output directory from config: {path}")
+            except Exception as e:
+                logger.warning(f"Could not load output directory from config: {e}")
+        
+        # Update UI state after loading config
         self._update_ui_state()
     
     def _update_ui_state(self):

@@ -41,14 +41,66 @@ class License:
             signature=data.get('signature')
         )
     
-    def is_expired(self) -> bool:
-        """Check if license is expired."""
+    def is_expired(self, clock_skew_tolerance_minutes: int = 5) -> bool:
+        """
+        Check if license is expired with clock skew tolerance.
+        
+        Args:
+            clock_skew_tolerance_minutes: Tolerance for clock skew in minutes (default: 5 minutes)
+        
+        Returns:
+            True if expired, False otherwise
+        """
         try:
             expiry_date = datetime.strptime(self.expires, '%Y-%m-%d').date()
             today = datetime.now().date()
-            return today > expiry_date
+            
+            # Add clock skew tolerance (treat as expired only if clearly past expiry)
+            # This handles minor clock differences between systems
+            from datetime import timedelta
+            tolerance = timedelta(minutes=clock_skew_tolerance_minutes)
+            effective_expiry = datetime.combine(expiry_date, datetime.min.time()) + tolerance
+            
+            return datetime.now() > effective_expiry
         except (ValueError, TypeError):
             return True
+    
+    def days_until_expiry(self) -> Optional[int]:
+        """
+        Get number of days until license expires.
+        
+        Returns:
+            Number of days until expiry, or None if invalid
+        """
+        try:
+            expiry_date = datetime.strptime(self.expires, '%Y-%m-%d').date()
+            today = datetime.now().date()
+            delta = expiry_date - today
+            return delta.days
+        except (ValueError, TypeError):
+            return None
+    
+    def get_expiry_warning_level(self) -> Optional[str]:
+        """
+        Get expiry warning level based on days until expiry.
+        
+        Returns:
+            'critical' (7 days), 'warning' (14 days), 'info' (30 days), or None
+        """
+        days = self.days_until_expiry()
+        if days is None:
+            return None
+        
+        if days < 0:
+            return 'expired'
+        elif days <= 7:
+            return 'critical'
+        elif days <= 14:
+            return 'warning'
+        elif days <= 30:
+            return 'info'
+        
+        return None
     
     def to_json_string(self) -> str:
         """Convert license to JSON string (without signature for signing)."""

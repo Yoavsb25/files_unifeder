@@ -5,7 +5,6 @@ Handles finding and merging PDF files.
 
 import sys
 import os
-import warnings
 from contextlib import contextmanager
 from pathlib import Path
 from typing import List, Optional
@@ -57,45 +56,36 @@ def _get_pdf_libraries():
     return _PdfWriter, _PdfReader
 
 
-def find_source_file(folder: Path, filename: str) -> Optional[Path]:
+def find_source_file(
+    folder: Path,
+    filename: str,
+    fail_on_ambiguous: bool = False
+) -> Optional[Path]:
     """
     Find a source file (PDF or Excel) matching the filename in the given folder.
-    Searches for PDF files first, then Excel files.
+    Uses formal matching rules with ambiguity detection.
     
     Args:
         folder: Path to the folder containing source files
         filename: Filename (with or without extension) to search for
+        fail_on_ambiguous: If True, raises ValueError on ambiguous matches (default: False)
         
     Returns:
         Path to the source file if found, None otherwise
+        
+    Raises:
+        ValueError: If fail_on_ambiguous is True and multiple matches are found
     """
-    filename_lower = filename.lower()
-    filename_stem = Path(filename).stem.lower()
+    from .matching import find_best_match, MatchBehavior
     
-    # Try exact match first (with any supported extension)
-    for ext in SOURCE_FILE_EXTENSIONS:
-        file_path = folder / f"{filename_lower}{ext}"
-        if file_path.exists():
-            return file_path
+    behavior = MatchBehavior.FAIL_FAST if fail_on_ambiguous else MatchBehavior.WARN_FIRST
     
-    # Try matching by stem (filename without extension)
-    for source_file in folder.iterdir():
-        if not source_file.is_file():
-            continue
-        
-        file_ext = source_file.suffix.lower()
-        if file_ext not in SOURCE_FILE_EXTENSIONS:
-            continue
-        
-        # Match by full filename (case-insensitive)
-        if source_file.name.lower() == filename_lower:
-            return source_file
-        
-        # Match by stem (filename without extension)
-        if source_file.stem.lower() == filename_stem or source_file.stem.lower() == filename_lower:
-            return source_file
-    
-    return None
+    try:
+        match_result = find_best_match(folder, filename, behavior=behavior)
+        return match_result.file_path
+    except ValueError as e:
+        # Re-raise ValueError from matching rules
+        raise
 
 
 def find_pdf_file(folder: Path, filename: str) -> Optional[Path]:
@@ -135,13 +125,22 @@ def find_pdf_file(folder: Path, filename: str) -> Optional[Path]:
     return None
 
 
-def merge_pdfs(pdf_paths: List[Path], output_path: Path) -> bool:
+def merge_pdfs(
+    pdf_paths: List[Path],
+    output_path: Path,
+    use_streaming: Optional[bool] = None,
+    streaming_threshold_mb: float = 100.0
+) -> bool:
     """
     Merge multiple PDF files into a single PDF.
+    
+    Automatically uses streaming mode for large files to conserve memory.
     
     Args:
         pdf_paths: List of paths to PDF files to merge
         output_path: Path where the merged PDF will be saved
+        use_streaming: Force streaming mode (None = auto-detect based on file size)
+        streaming_threshold_mb: Memory threshold in MB for auto-enabling streaming (default: 100 MB)
         
     Returns:
         True if successful, False otherwise
@@ -153,6 +152,25 @@ def merge_pdfs(pdf_paths: List[Path], output_path: Path) -> bool:
         logger.warning(f"No PDF files to merge for {output_path.name}")
         return False
     
+    # Auto-detect streaming mode if not specified
+    if use_streaming is None:
+        try:
+            from .pdf_operations_streaming import should_use_streaming
+            use_streaming = should_use_streaming(pdf_paths, streaming_threshold_mb)
+            if use_streaming:
+                logger.info(f"Using streaming mode for large PDF merge (estimated size > {streaming_threshold_mb} MB)")
+        except ImportError:
+            use_streaming = False
+    
+    # Use streaming mode for large files
+    if use_streaming:
+        try:
+            from .pdf_operations_streaming import merge_pdfs_streaming
+            return merge_pdfs_streaming(pdf_paths, output_path)
+        except ImportError:
+            logger.warning("Streaming mode requested but not available, falling back to standard mode")
+    
+    # Standard mode (load all pages into memory)
     try:
         PdfWriter, PdfReader = _get_pdf_libraries()
         writer = PdfWriter()

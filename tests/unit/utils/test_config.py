@@ -55,7 +55,11 @@ class TestAppConfig:
             'input_file': '/path/to/input.csv',
             'pdf_dir': '/path/to/pdfs',
             'output_dir': '/path/to/output',
-            'required_column': DEFAULT_SERIAL_NUMBERS_COLUMN
+            'required_column': DEFAULT_SERIAL_NUMBERS_COLUMN,
+            'metrics_enabled': True,
+            'telemetry_enabled': False,
+            'crash_reporting_enabled': False,
+            'fail_on_ambiguous_matches': True
         }
     
     def test_app_config_from_dict(self):
@@ -193,7 +197,10 @@ class TestLoadConfig:
             assert result.pdf_dir is None
             assert result.output_dir is None
     
-    def test_load_config_success(self, tmp_path):
+    @patch('pdf_merger.config.load_env_config')
+    @patch('pdf_merger.config.load_project_preset')
+    @patch('pdf_merger.config.load_user_config')
+    def test_load_config_success(self, mock_user_config, mock_project_preset, mock_env_config, tmp_path):
         """Test successfully loading config from file."""
         config_file = tmp_path / "config.json"
         config_data = {
@@ -204,15 +211,20 @@ class TestLoadConfig:
         }
         config_file.write_text(json.dumps(config_data))
         
-        with patch('pdf_merger.config.get_config_path') as mock_get_path:
-            mock_get_path.return_value = config_file
-            
-            result = load_config()
-            
-            assert result.input_file == '/path/to/input.csv'
-            assert result.pdf_dir == '/path/to/pdfs'
-            assert result.output_dir == '/path/to/output'
-            assert result.required_column == 'custom_column'
+        # Mock no environment variables or project preset
+        mock_env_config.return_value = AppConfig()
+        mock_project_preset.return_value = None
+        
+        # Mock user config to return the loaded config
+        user_config = AppConfig.from_dict(config_data)
+        mock_user_config.return_value = user_config
+        
+        result = load_config()
+        
+        assert result.input_file == '/path/to/input.csv'
+        assert result.pdf_dir == '/path/to/pdfs'
+        assert result.output_dir == '/path/to/output'
+        assert result.required_column == 'custom_column'
     
     def test_load_config_invalid_json(self, tmp_path):
         """Test loading config with invalid JSON."""

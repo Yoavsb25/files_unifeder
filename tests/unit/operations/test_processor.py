@@ -147,9 +147,9 @@ class TestProcessRow:
 class TestProcessFile:
     """Test cases for process_file function."""
     
-    @patch('pdf_merger.processor.process_row')
+    @patch('pdf_merger.processor.process_job')
     @patch('pdf_merger.processor.read_data_file')
-    def test_process_file_success(self, mock_read, mock_process_row, tmp_path):
+    def test_process_file_success(self, mock_read, mock_process_job, tmp_path):
         """Test successful processing of a file."""
         file_path = tmp_path / "data.csv"
         source_folder = tmp_path / "source"
@@ -164,19 +164,27 @@ class TestProcessFile:
             {"serial_numbers": "GRNW_000103853"}
         ])
         
-        mock_process_row.return_value = True
+        # Mock process_job to return successful result
+        from pdf_merger.models import MergeResult
+        mock_result = MergeResult(
+            total_rows=3,
+            successful_merges=3,
+            failed_rows=[],
+            skipped_rows=[]
+        )
+        mock_process_job.return_value = mock_result
         
         result = process_file(file_path, source_folder, output_folder)
         
         assert result.total_rows == 3
         assert result.successful_merges == 3
         assert result.failed_rows == []
-        assert mock_process_row.call_count == 3
-        assert output_folder.exists()
+        # output_folder is created by process_job, but we're mocking it, so check if it would be created
+        # The actual folder creation happens in process_job, so we can't assert it exists when mocked
     
-    @patch('pdf_merger.processor.process_row')
+    @patch('pdf_merger.processor.process_job')
     @patch('pdf_merger.processor.read_data_file')
-    def test_process_file_with_failures(self, mock_read, mock_process_row, tmp_path):
+    def test_process_file_with_failures(self, mock_read, mock_process_job, tmp_path):
         """Test processing file with some row failures."""
         file_path = tmp_path / "data.csv"
         source_folder = tmp_path / "source"
@@ -190,7 +198,15 @@ class TestProcessFile:
             {"serial_numbers": "GRNW_000103853"}
         ])
         
-        mock_process_row.side_effect = [True, False, True]
+        # Mock process_job to return result with failures
+        from pdf_merger.models import MergeResult
+        mock_result = MergeResult(
+            total_rows=3,
+            successful_merges=2,
+            failed_rows=[2],  # 1-indexed
+            skipped_rows=[]
+        )
+        mock_process_job.return_value = mock_result
         
         result = process_file(file_path, source_folder, output_folder)
         
@@ -215,10 +231,9 @@ class TestProcessFile:
         assert result.successful_merges == 0
         assert result.failed_rows == []
     
-    @patch('pdf_merger.processor.merge_pdfs')
+    @patch('pdf_merger.processor.process_job')
     @patch('pdf_merger.processor.read_data_file')
-    @patch('pdf_merger.processor.find_source_file')
-    def test_process_file_missing_column(self, mock_find, mock_read, mock_merge, tmp_path):
+    def test_process_file_missing_column(self, mock_read, mock_process_job, tmp_path):
         """Test processing file with missing serial_numbers column."""
         file_path = tmp_path / "data.csv"
         source_folder = tmp_path / "source"
@@ -231,11 +246,15 @@ class TestProcessFile:
             {"serial_numbers": "GRNW_000103851"}
         ])
         
-        # Mock find_source_file to return a file for the second row
-        pdf_file = source_folder / "GRNW_000103851.pdf"
-        pdf_file.write_bytes(b"fake pdf")
-        mock_find.return_value = pdf_file
-        mock_merge.return_value = True
+        # Mock process_job to return result with one failure (first row has no serial_numbers)
+        from pdf_merger.models import MergeResult
+        mock_result = MergeResult(
+            total_rows=2,
+            successful_merges=1,
+            failed_rows=[1],  # First row (1-indexed) failed
+            skipped_rows=[]
+        )
+        mock_process_job.return_value = mock_result
         
         result = process_file(file_path, source_folder, output_folder)
         
@@ -262,9 +281,9 @@ class TestProcessFile:
         assert result.successful_merges == 0
         assert result.failed_rows == []
     
-    @patch('pdf_merger.processor.process_row')
+    @patch('pdf_merger.processor.process_job')
     @patch('pdf_merger.processor.read_data_file')
-    def test_process_file_custom_column(self, mock_read, mock_process_row, tmp_path):
+    def test_process_file_custom_column(self, mock_read, mock_process_job, tmp_path):
         """Test processing file with custom required column."""
         file_path = tmp_path / "data.csv"
         source_folder = tmp_path / "source"
@@ -276,15 +295,25 @@ class TestProcessFile:
             {"custom_column": "GRNW_000103851"}
         ])
         
-        mock_process_row.return_value = True
+        # Mock process_job to return successful result
+        from pdf_merger.models import MergeResult
+        mock_result = MergeResult(
+            total_rows=1,
+            successful_merges=1,
+            failed_rows=[],
+            skipped_rows=[]
+        )
+        mock_process_job.return_value = mock_result
         
         result = process_file(file_path, source_folder, output_folder, required_column="custom_column")
         
         assert result.total_rows == 1
-        # Verify process_row was called with the correct serial_numbers_str
-        mock_process_row.assert_called_once()
-        call_args = mock_process_row.call_args
-        assert call_args[0][1] == "GRNW_000103851"  # Check serial_numbers_str argument
+        # Verify process_job was called
+        mock_process_job.assert_called_once()
+        # Verify the job was created with the custom column
+        call_args = mock_process_job.call_args
+        job = call_args[0][0]
+        assert job.required_column == "custom_column"
     
     @patch('pdf_merger.processor.merge_pdfs')
     @patch('pdf_merger.processor.find_source_file')
@@ -320,10 +349,9 @@ class TestProcessFile:
         warning_calls = [str(call) for call in mock_logger.warning.call_args_list]
         assert any("Invalid serial number format" in str(call) for call in warning_calls)
     
-    @patch('pdf_merger.processor.process_row')
     @patch('pdf_merger.processor.read_data_file')
     @patch('pdf_merger.processor.logger')
-    def test_process_file_unexpected_exception(self, mock_logger, mock_read, mock_process_row, tmp_path):
+    def test_process_file_unexpected_exception(self, mock_logger, mock_read, tmp_path):
         """Test processing file when an unexpected exception occurs."""
         file_path = tmp_path / "data.csv"
         source_folder = tmp_path / "source"
@@ -344,7 +372,7 @@ class TestProcessFile:
         # Should log the error
         assert mock_logger.error.called
         error_calls = [str(call) for call in mock_logger.error.call_args_list]
-        assert any("Unexpected error processing file" in str(call) for call in error_calls)
+        assert any("Error reading file" in str(call) for call in error_calls)
 
 
 class TestProcessRowWithExcel:

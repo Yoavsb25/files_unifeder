@@ -163,7 +163,7 @@ class TestFormatResultDetailed:
         assert "Detailed Processing Report" in report
         assert "Total rows in input file: 10" in report
         assert "Successfully merged PDFs: 10" in report
-        assert "Failed or skipped rows: 0" in report
+        assert "Failed rows: 0" in report
         assert "Success rate: 100.0%" in report
         assert "=" * 60 in report
     
@@ -179,7 +179,7 @@ class TestFormatResultDetailed:
         
         assert "Total rows in input file: 10" in report
         assert "Successfully merged PDFs: 7" in report
-        assert "Failed or skipped rows: 3" in report
+        assert "Failed rows: 3" in report
         assert "Success rate: 70.0%" in report
         assert "Failed/Skipped Row Numbers:" in report
         assert "  - Row 2" in report
@@ -198,7 +198,7 @@ class TestFormatResultDetailed:
         
         assert "Total rows in input file: 0" in report
         assert "Successfully merged PDFs: 0" in report
-        assert "Failed or skipped rows: 0" in report
+        assert "Failed rows: 0" in report
         assert "Success rate: 0.0%" in report
     
     def test_format_result_detailed_partial_success(self):
