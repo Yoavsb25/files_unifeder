@@ -9,6 +9,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from ..enums import WarningLevel
+from ..constants import Constants
+
 
 @dataclass
 class License:
@@ -41,7 +44,7 @@ class License:
             signature=data.get('signature')
         )
     
-    def is_expired(self, clock_skew_tolerance_minutes: int = 5) -> bool:
+    def is_expired(self, clock_skew_tolerance_minutes: int = Constants.LICENSE_CLOCK_SKEW_TOLERANCE_MINUTES) -> bool:
         """
         Check if license is expired with clock skew tolerance.
         
@@ -52,7 +55,7 @@ class License:
             True if expired, False otherwise
         """
         try:
-            expiry_date = datetime.strptime(self.expires, '%Y-%m-%d').date()
+            expiry_date = datetime.strptime(self.expires, Constants.LICENSE_DATE_FORMAT).date()
             today = datetime.now().date()
             
             # If expiry date is today or in the future, license is not expired
@@ -78,32 +81,32 @@ class License:
             Number of days until expiry, or None if invalid
         """
         try:
-            expiry_date = datetime.strptime(self.expires, '%Y-%m-%d').date()
+            expiry_date = datetime.strptime(self.expires, Constants.LICENSE_DATE_FORMAT).date()
             today = datetime.now().date()
             delta = expiry_date - today
             return delta.days
         except (ValueError, TypeError):
             return None
     
-    def get_expiry_warning_level(self) -> Optional[str]:
+    def get_expiry_warning_level(self) -> Optional[WarningLevel]:
         """
         Get expiry warning level based on days until expiry.
         
         Returns:
-            'critical' (7 days), 'warning' (14 days), 'info' (30 days), or None
+            WarningLevel enum value or None if no warning needed
         """
         days = self.days_until_expiry()
         if days is None:
             return None
         
         if days < 0:
-            return 'expired'
-        elif days <= 7:
-            return 'critical'
-        elif days <= 14:
-            return 'warning'
-        elif days <= 30:
-            return 'info'
+            return WarningLevel.EXPIRED
+        elif days <= Constants.LICENSE_WARNING_CRITICAL_DAYS:
+            return WarningLevel.CRITICAL
+        elif days <= Constants.LICENSE_WARNING_WARNING_DAYS:
+            return WarningLevel.WARNING
+        elif days <= Constants.LICENSE_WARNING_INFO_DAYS:
+            return WarningLevel.INFO
         
         return None
     

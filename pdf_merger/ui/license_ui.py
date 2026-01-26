@@ -60,21 +60,22 @@ def match_color_to_display_text(
     
     return "Unknown license status"
 
-def match_color_to_warning_level(warning_level: str) -> str:
+def match_color_to_warning_level(warning_level: WarningLevel) -> str:
     """
     Match color to warning level.
     
     Args:
-        warning_level: Warning level string ('critical', 'warning', 'info')
+        warning_level: WarningLevel enum value
     
     Returns:
         Color string value for the warning level
     """
-    # Map warning level strings to colors
+    # Map warning level enum to colors
     warning_to_color = {
-        WarningLevel.CRITICAL.value: LicenseColor.RED.value,
-        WarningLevel.WARNING.value: LicenseColor.ORANGE.value,
-        WarningLevel.INFO.value: LicenseColor.YELLOW.value,
+        WarningLevel.EXPIRED: LicenseColor.RED.value,
+        WarningLevel.CRITICAL: LicenseColor.RED.value,
+        WarningLevel.WARNING: LicenseColor.ORANGE.value,
+        WarningLevel.INFO: LicenseColor.YELLOW.value,
     }
     return warning_to_color.get(warning_level, LicenseColor.YELLOW.value)
 
@@ -103,7 +104,15 @@ def update_license_display(license_manager: LicenseManager, license_label) -> bo
             )
         else:
             warning_msg = license_manager.get_expiry_warning_message()
-            warning_level = info.get("expiry_warning_level", "info")
+            warning_level_str = info.get("expiry_warning_level", "info")
+            # Convert string to WarningLevel enum if needed
+            if isinstance(warning_level_str, str):
+                try:
+                    warning_level = WarningLevel(warning_level_str)
+                except ValueError:
+                    warning_level = WarningLevel.INFO
+            else:
+                warning_level = warning_level_str if isinstance(warning_level_str, WarningLevel) else WarningLevel.INFO
             company_name = info.get("company", "Unknown")
             expires = info.get("expires", "Unknown")
             error_msg = ""

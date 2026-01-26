@@ -6,10 +6,15 @@ Supports both legacy ProcessingResult and new MergeResult domain models.
 
 from typing import Union
 from ..processor import ProcessingResult
-from ..models import MergeResult
+from ..models import MergeResult, RowStatus
+from ..constants import Constants
 from ..logger import get_logger
 
 logger = get_logger("core.reporter")
+
+# Module-level constants
+MAX_DISPLAY_STRING_LENGTH = Constants.MAX_DISPLAY_STRING_LENGTH
+PERCENTAGE_MULTIPLIER = Constants.PERCENTAGE_MULTIPLIER
 
 
 def format_result_summary(result: Union[ProcessingResult, MergeResult]) -> str:
@@ -42,8 +47,8 @@ def format_result_summary(result: Union[ProcessingResult, MergeResult]) -> str:
     
     if result.failed_rows:
         failed_str = ', '.join(map(str, result.failed_rows))
-        if len(failed_str) > 100:
-            failed_str = failed_str[:97] + "..."
+        if len(failed_str) > MAX_DISPLAY_STRING_LENGTH:
+            failed_str = failed_str[:MAX_DISPLAY_STRING_LENGTH - 3] + "..."
         lines.append(f"Failed row numbers: {failed_str}")
     
     lines.append("=" * 60)
@@ -67,7 +72,7 @@ def format_result_detailed(result: Union[ProcessingResult, MergeResult]) -> str:
     failed = len(result.failed_rows)
     skipped = len(result.skipped_rows) if isinstance(result, MergeResult) else 0
     success_rate = result.get_success_rate() if isinstance(result, MergeResult) else (
-        (successful / total_rows * 100) if total_rows > 0 else 0
+        (successful / total_rows * PERCENTAGE_MULTIPLIER) if total_rows > 0 else 0
     )
     
     lines = [
@@ -107,7 +112,7 @@ def format_result_detailed(result: Union[ProcessingResult, MergeResult]) -> str:
                         lines.append(f"    Missing files: {', '.join(row_result.files_missing)}")
                 elif row_result.is_skipped():
                     lines.append(f"  Row {row_result.row_index + 1}: SKIPPED - {row_result.error_message or 'No serial numbers'}")
-                elif row_result.status.value == 'partial':
+                elif row_result.status == RowStatus.PARTIAL:
                     lines.append(f"  Row {row_result.row_index + 1}: PARTIAL - Some files missing")
                     if row_result.files_missing:
                         lines.append(f"    Missing files: {', '.join(row_result.files_missing)}")

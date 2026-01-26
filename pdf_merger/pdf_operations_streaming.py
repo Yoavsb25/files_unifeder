@@ -11,8 +11,15 @@ from typing import List, Optional
 
 from .logger import get_logger
 from .pdf_operations import suppress_stderr
+from .constants import Constants
 
 logger = get_logger("pdf_operations_streaming")
+
+# Module-level constants
+STREAMING_CHUNK_SIZE = Constants.STREAMING_CHUNK_SIZE
+STREAMING_PROGRESS_INTERVAL = Constants.STREAMING_PROGRESS_INTERVAL
+BYTES_PER_MB = Constants.BYTES_PER_MB
+MEMORY_MULTIPLIER_ESTIMATE = Constants.MEMORY_MULTIPLIER_ESTIMATE
 
 # Lazy import of PDF libraries
 _PdfWriter = None
@@ -47,7 +54,7 @@ def _get_pdf_libraries():
 def merge_pdfs_streaming(
     pdf_paths: List[Path],
     output_path: Path,
-    chunk_size: int = 10
+    chunk_size: int = STREAMING_CHUNK_SIZE
 ) -> bool:
     """
     Merge multiple PDF files using streaming mode (processes pages incrementally).
@@ -103,7 +110,7 @@ def merge_pdfs_streaming(
                             processed_pages += 1
                         
                         # Log progress for large files
-                        if total_pages > 100 and processed_pages % 50 == 0:
+                        if total_pages > STREAMING_PROGRESS_INTERVAL * 2 and processed_pages % STREAMING_PROGRESS_INTERVAL == 0:
                             logger.debug(f"Processed {processed_pages}/{total_pages} pages")
                     
             except Exception as e:
@@ -137,7 +144,7 @@ def get_pdf_size_mb(pdf_path: Path) -> float:
     """
     try:
         size_bytes = pdf_path.stat().st_size
-        return size_bytes / (1024 * 1024)
+        return size_bytes / BYTES_PER_MB
     except Exception:
         return 0.0
 
@@ -154,10 +161,10 @@ def estimate_memory_usage(pdf_paths: List[Path]) -> float:
     """
     total_size_mb = sum(get_pdf_size_mb(p) for p in pdf_paths)
     # Rough estimate: PDF libraries may use 2-3x the file size in memory
-    return total_size_mb * 2.5
+    return total_size_mb * MEMORY_MULTIPLIER_ESTIMATE
 
 
-def should_use_streaming(pdf_paths: List[Path], threshold_mb: float = 100.0) -> bool:
+def should_use_streaming(pdf_paths: List[Path], threshold_mb: float = Constants.STREAMING_THRESHOLD_MB) -> bool:
     """
     Determine if streaming mode should be used based on file sizes.
     

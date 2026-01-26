@@ -8,11 +8,15 @@ from typing import Optional, List, Tuple
 
 from .logger import get_logger
 from .constants import Constants
+from .enums import PageOrientation, PageSize
 
 logger = get_logger("excel_converter")
 
 # Module-level constants
 EXCEL_FILE_EXTENSIONS = Constants.EXCEL_FILE_EXTENSIONS
+DEFAULT_PAGE_SIZE = Constants.DEFAULT_PAGE_SIZE
+DEFAULT_ORIENTATION = Constants.DEFAULT_ORIENTATION
+DEFAULT_MAX_COLS_PER_PAGE = Constants.DEFAULT_MAX_COLS_PER_PAGE
 
 
 def _safe_str(value) -> str:
@@ -93,10 +97,10 @@ def _split_wide_table(data: List[List[str]], max_cols_per_page: int = 8) -> List
 def convert_excel_to_pdf(
     excel_path: Path,
     output_path: Path,
-    page_size: str = 'letter',
-    orientation: str = 'portrait',
+    page_size: str = DEFAULT_PAGE_SIZE,
+    orientation: str = DEFAULT_ORIENTATION,
     auto_size_columns: bool = True,
-    max_cols_per_page: int = 8
+    max_cols_per_page: int = DEFAULT_MAX_COLS_PER_PAGE
 ) -> bool:
     """
     Convert an Excel file to PDF format using openpyxl and reportlab.
@@ -147,14 +151,16 @@ def convert_excel_to_pdf(
             )
         
         # Determine page size
+        page_size_enum = PageSize(page_size.lower()) if page_size.lower() in [s.value for s in PageSize] else PageSize.LETTER
         pagesize_map = {
-            'letter': letter,
-            'A4': A4,
+            PageSize.LETTER.value: letter,
+            PageSize.A4.value: A4,
         }
-        selected_pagesize = pagesize_map.get(page_size.lower(), letter)
+        selected_pagesize = pagesize_map.get(page_size_enum.value, letter)
         
         # Apply orientation
-        if orientation.lower() == 'landscape':
+        orientation_enum = PageOrientation(orientation.lower()) if orientation.lower() in [o.value for o in PageOrientation] else PageOrientation.PORTRAIT
+        if orientation_enum == PageOrientation.LANDSCAPE:
             selected_pagesize = landscape(selected_pagesize)
         
         # Load the Excel workbook

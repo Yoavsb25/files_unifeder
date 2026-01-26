@@ -59,6 +59,7 @@ class LicenseColor(Enum):
 
 class WarningLevel(Enum):
     """License expiry warning levels."""
+    EXPIRED = "expired"
     CRITICAL = "critical"
     WARNING = "warning"
     INFO = "info"
@@ -71,3 +72,15 @@ class StatusColor(Enum):
     RED = "red"
     ORANGE = "orange"
     BLUE = "blue"
+
+
+class PageOrientation(Enum):
+    """Page orientation for PDF generation."""
+    PORTRAIT = "portrait"
+    LANDSCAPE = "landscape"
+
+
+class PageSize(Enum):
+    """Page size for PDF generation."""
+    LETTER = "letter"
+    A4 = "A4"

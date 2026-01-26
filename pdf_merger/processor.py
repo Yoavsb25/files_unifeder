@@ -31,6 +31,7 @@ logger = get_logger("processor")
 EXCEL_FILE_EXTENSIONS = Constants.EXCEL_FILE_EXTENSIONS
 OUTPUT_FILENAME_PATTERN = Constants.OUTPUT_FILENAME_PATTERN
 DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+BYTES_PER_MB = Constants.BYTES_PER_MB
 
 
 @dataclass
@@ -276,7 +277,7 @@ def process_row_with_models(
             metrics.record_counter("rows_successful")
             # Record file size if available
             try:
-                file_size_mb = output_path.stat().st_size / (1024 * 1024)
+                file_size_mb = output_path.stat().st_size / BYTES_PER_MB
                 metrics.record_gauge("output_file_size_mb", file_size_mb)
             except Exception:
                 pass
