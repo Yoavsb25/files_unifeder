@@ -1,5 +1,5 @@
 """
-Unit tests for data_parser module.
+Unit tests for serial_number_parser module.
 """
 
 import pytest

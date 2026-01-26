@@ -331,8 +331,8 @@ pip install -r requirements.txt
 After successful installation:
 
 1. **Read the User Guide**: See `docs/README_USER.md` for usage instructions
-2. **Run Tests**: See `TESTING.md` for testing instructions
-3. **Explore Architecture**: See `ARCHITECTURE.md` for system design
+2. **Run Tests**: See `TESTING.md` (in same directory) for testing instructions
+3. **Explore Architecture**: See `ARCHITECTURE.md` (in same directory) for system design
 4. **Build Application**: See `BUILD.md` for packaging instructions
 
 ---

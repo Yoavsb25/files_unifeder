@@ -1,5 +1,5 @@
 """
-Unit tests for licensing module __init__.
+Unit tests for licensing module exports.
 """
 
 import pytest

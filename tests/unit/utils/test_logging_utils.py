@@ -1,5 +1,5 @@
 """
-Unit tests for logger module.
+Unit tests for logging_utils module.
 """
 
 import pytest

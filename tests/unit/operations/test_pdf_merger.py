@@ -1,5 +1,5 @@
 """
-Unit tests for pdf_operations module.
+Unit tests for pdf_merger module.
 """
 
 import pytest

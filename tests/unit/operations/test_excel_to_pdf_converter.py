@@ -1,5 +1,5 @@
 """
-Unit tests for excel_converter module.
+Unit tests for excel_to_pdf_converter module.
 """
 
 import pytest

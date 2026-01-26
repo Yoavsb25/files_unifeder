@@ -1,5 +1,5 @@
 """
-Unit tests for core module __init__.
+Unit tests for core module exports.
 """
 
 import pytest

@@ -609,8 +609,8 @@ jobs:
 ## Additional Resources
 
 - **Detailed Test Documentation**: See `tests/README.md`
-- **Architecture Guide**: See `ARCHITECTURE.md`
-- **Installation Guide**: See `INSTALLATION.md`
+- **Architecture Guide**: See `ARCHITECTURE.md` (in same directory)
+- **Installation Guide**: See `INSTALLATION.md` (in same directory)
 - **pytest Documentation**: https://docs.pytest.org/
 - **Coverage.py Documentation**: https://coverage.readthedocs.io/
 

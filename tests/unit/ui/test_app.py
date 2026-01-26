@@ -1,5 +1,5 @@
 """
-Unit tests for UI module.
+Unit tests for UI app module.
 """
 
 import pytest

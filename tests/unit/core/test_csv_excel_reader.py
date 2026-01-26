@@ -1,5 +1,5 @@
 """
-Unit tests for file_reader module.
+Unit tests for csv_excel_reader module.
 """
 
 import pytest

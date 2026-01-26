@@ -1,5 +1,5 @@
 """
-Unit tests for pdf_operations_streaming module.
+Unit tests for streaming_pdf_merger module.
 """
 
 import pytest

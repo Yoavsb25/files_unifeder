@@ -1,5 +1,5 @@
 """
-Unit tests for config module.
+Unit tests for config_manager module.
 """
 
 import json

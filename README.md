@@ -44,9 +44,9 @@ A desktop application for merging PDF and Excel files into PDF documents based o
 ## Documentation
 
 - **[User Guide](docs/README_USER.md)** - How to use the application
-- **[Installation Guide](INSTALLATION.md)** - Detailed installation instructions
-- **[Architecture Documentation](ARCHITECTURE.md)** - System architecture and design
-- **[Testing Guide](TESTING.md)** - Running and writing tests
+- **[Installation Guide](docs/INSTALLATION.md)** - Detailed installation instructions
+- **[Architecture Documentation](docs/ARCHITECTURE.md)** - System architecture and design
+- **[Testing Guide](docs/TESTING.md)** - Running and writing tests
 
 ## Recent Changes
 
@@ -114,7 +114,7 @@ pytest --cov=pdf_merger --cov-report=html
 
 ### Building
 
-See `INSTALLATION.md` for build instructions using PyInstaller.
+See `docs/INSTALLATION.md` for build instructions using PyInstaller.
 
 ## License
 

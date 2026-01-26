@@ -1,5 +1,5 @@
 """
-Unit tests for licensing modules.
+Unit tests for license_manager module.
 """
 
 import json

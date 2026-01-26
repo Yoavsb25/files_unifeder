@@ -1,5 +1,5 @@
 """
-Unit tests for utils package __init__.py.
+Unit tests for utils package exports.
 """
 
 import pytest

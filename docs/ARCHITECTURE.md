@@ -1088,8 +1088,8 @@ Enhanced Excel to PDF conversion with professional rendering:
 
 ## Additional Resources
 
-- **Installation Guide**: See `INSTALLATION.md`
-- **Testing Guide**: See `TESTING.md`
+- **Installation Guide**: See `INSTALLATION.md` (in same directory)
+- **Testing Guide**: See `TESTING.md` (in same directory)
 - **User Guide**: See `docs/README_USER.md`
 - **Configuration Guide**: See `docs/CONFIGURATION.md`
 - **Matching Rules**: See `docs/MATCHING_RULES.md` and `pdf_merger/matching/spec.md`

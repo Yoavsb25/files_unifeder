@@ -1,5 +1,5 @@
 """
-Unit tests for processor module.
+Unit tests for merge_processor module.
 """
 
 import pytest
