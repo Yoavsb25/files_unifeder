@@ -10,9 +10,13 @@ from pathlib import Path
 from typing import List, Optional
 
 from .logger import get_logger
-from .enums import PDF_FILE_EXTENSION, SOURCE_FILE_EXTENSIONS, EXCEL_FILE_EXTENSIONS
+from .constants import Constants
 
 logger = get_logger("pdf_operations")
+
+# Module-level constants
+PDF_FILE_EXTENSION = Constants.PDF_FILE_EXTENSION
+STREAMING_THRESHOLD_MB = Constants.STREAMING_THRESHOLD_MB
 
 # Lazy import of PDF libraries - only import when merge_pdfs is called
 _PdfWriter = None
@@ -129,7 +133,7 @@ def merge_pdfs(
     pdf_paths: List[Path],
     output_path: Path,
     use_streaming: Optional[bool] = None,
-    streaming_threshold_mb: float = 100.0
+    streaming_threshold_mb: float = STREAMING_THRESHOLD_MB
 ) -> bool:
     """
     Merge multiple PDF files into a single PDF.

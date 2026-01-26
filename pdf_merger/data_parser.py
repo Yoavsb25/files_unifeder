@@ -4,8 +4,12 @@ Handles parsing serial numbers from strings.
 """
 
 from typing import List, Set, Optional
-from .enums import SERIAL_NUMBER_SEPARATOR, SERIAL_NUMBER_PREFIX, SERIAL_NUMBER_PREFIX_LOWER
+from .constants import Constants
 
+# Module-level constants
+SERIAL_NUMBER_SEPARATOR = Constants.SERIAL_NUMBER_SEPARATOR
+SERIAL_NUMBER_PREFIX = Constants.SERIAL_NUMBER_PREFIX
+SERIAL_NUMBER_PREFIX_LOWER = Constants.SERIAL_NUMBER_PREFIX_LOWER
 
 def split_serial_numbers(serial_numbers_str: str) -> List[str]:
     """

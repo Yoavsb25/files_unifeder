@@ -5,7 +5,7 @@ Unit tests for config_schema module.
 import pytest
 from pathlib import Path
 from pdf_merger.config_schema import ConfigSchema
-from pdf_merger.enums import DEFAULT_SERIAL_NUMBERS_COLUMN
+from pdf_merger.constants import Constants
 
 
 class TestConfigSchema:
@@ -134,13 +134,13 @@ class TestConfigSchema:
         """Test validating None column name (should return default)."""
         result = ConfigSchema.validate_column(None)
         
-        assert result == DEFAULT_SERIAL_NUMBERS_COLUMN
+        assert result == Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
     
     def test_validate_column_empty_string(self):
         """Test validating empty string column name (should return default)."""
         result = ConfigSchema.validate_column("")
         
-        assert result == DEFAULT_SERIAL_NUMBERS_COLUMN
+        assert result == Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
     
     def test_validate_column_whitespace_only(self):
         """Test validating whitespace-only column name."""
@@ -189,7 +189,7 @@ class TestConfigSchema:
         assert 'input_file' not in result or result['input_file'] is None
         assert 'pdf_dir' not in result or result['pdf_dir'] is None
         assert 'output_dir' not in result or result['output_dir'] is None
-        assert result['required_column'] == DEFAULT_SERIAL_NUMBERS_COLUMN
+        assert result['required_column'] == Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
     
     def test_validate_config_invalid_input_file(self, tmp_path):
         """Test validating config with invalid input file."""
@@ -261,8 +261,8 @@ class TestConfigSchema:
         
         result = ConfigSchema.validate_config(config)
         
-        # Invalid column should default to DEFAULT_SERIAL_NUMBERS_COLUMN
-        assert result['required_column'] == DEFAULT_SERIAL_NUMBERS_COLUMN
+        # Invalid column should default to Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+        assert result['required_column'] == Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
     
     def test_validate_config_no_column(self):
         """Test validating config without column (should use default)."""
@@ -270,4 +270,4 @@ class TestConfigSchema:
         
         result = ConfigSchema.validate_config(config)
         
-        assert result['required_column'] == DEFAULT_SERIAL_NUMBERS_COLUMN
+        assert result['required_column'] == Constants.DEFAULT_SERIAL_NUMBERS_COLUMN

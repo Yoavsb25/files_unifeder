@@ -88,7 +88,7 @@ sys.modules['customtkinter'] = mock_ctk
 
 from pdf_merger.ui.app import PDFMergerApp, run_gui
 from pdf_merger.ui.components import LogHandler
-from pdf_merger.ui.enums import StatusColor
+from pdf_merger.enums import StatusColor
 from pdf_merger.licensing import LicenseStatus
 from pdf_merger.processor import ProcessingResult
 

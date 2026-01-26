@@ -6,7 +6,7 @@ import customtkinter as ctk
 from typing import Callable, Optional, Union
 
 from .. import APP_VERSION, APP_NAME
-from .enums import StatusColor
+from ..enums import StatusColor
 
 
 class LogHandler:

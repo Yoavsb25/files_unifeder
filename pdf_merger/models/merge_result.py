@@ -6,20 +6,16 @@ Represents the result of processing a merge job with detailed per-row results.
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
-from enum import Enum
 
 from .row import Row
+from ..enums import RowStatus
+from ..constants import Constants
 from ..logger import get_logger
 
 logger = get_logger("models.merge_result")
 
-
-class RowStatus(Enum):
-    """Status of a row processing operation."""
-    SUCCESS = "success"
-    FAILED = "failed"
-    SKIPPED = "skipped"
-    PARTIAL = "partial"  # Some files found but not all
+# Module-level constants
+PERCENTAGE_MULTIPLIER = Constants.PERCENTAGE_MULTIPLIER
 
 
 @dataclass
@@ -132,7 +128,7 @@ class MergeResult:
         """
         if self.total_rows == 0:
             return 0.0
-        return (self.successful_merges / self.total_rows) * 100.0
+        return (self.successful_merges / self.total_rows) * PERCENTAGE_MULTIPLIER
     
     def get_failed_row_results(self) -> List[RowResult]:
         """Get all failed row results."""

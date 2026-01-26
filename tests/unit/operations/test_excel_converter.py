@@ -8,7 +8,7 @@ import warnings
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 from pdf_merger.excel_converter import convert_excel_to_pdf, _safe_str
-from pdf_merger.enums import EXCEL_FILE_EXTENSIONS
+from pdf_merger.constants import Constants
 
 
 class TestSafeStr:

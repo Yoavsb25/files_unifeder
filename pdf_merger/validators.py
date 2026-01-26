@@ -11,9 +11,14 @@ from pathlib import Path
 from .file_reader import get_file_columns
 from .logger import get_logger
 from .exceptions import MissingColumnError, FileNotFoundError, ValidationError, InvalidFileFormatError
-from .enums import DEFAULT_SERIAL_NUMBERS_COLUMN, SERIAL_NUMBER_PREFIX, SERIAL_NUMBER_PREFIX_LOWER
+from .constants import Constants
 
 logger = get_logger("validators")
+
+# Module-level constants
+DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+SERIAL_NUMBER_PREFIX = Constants.SERIAL_NUMBER_PREFIX
+SERIAL_NUMBER_PREFIX_LOWER = Constants.SERIAL_NUMBER_PREFIX_LOWER
 
 def validate_serial_number(serial_number: str) -> bool:
     """

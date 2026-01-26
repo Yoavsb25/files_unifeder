@@ -4,26 +4,15 @@ Main license validation and verification logic with enhanced UX.
 """
 
 import socket
-from enum import Enum
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
 
 from .license_model import License
 from .license_signer import get_embedded_public_key, verify_license_signature
+from ..enums import LicenseStatus, WarningLevel
 from ..logger import get_logger
 
 logger = get_logger("licensing.manager")
-
-
-class LicenseStatus(Enum):
-    """License validation status."""
-    VALID = "valid"
-    EXPIRED = "expired"
-    INVALID_SIGNATURE = "invalid_signature"
-    NOT_FOUND = "not_found"
-    INVALID_FORMAT = "invalid_format"
-    VERSION_MISMATCH = "version_mismatch"
 
 
 class LicenseManager:
@@ -234,15 +223,18 @@ class LicenseManager:
             return None
         
         warning_level = license.get_expiry_warning_level()
+        if warning_level is None:
+            return None
+        
         days = license.days_until_expiry()
         
-        if warning_level == 'expired':
+        if warning_level == WarningLevel.EXPIRED:
             return f"License expired on {license.expires}. Please renew immediately."
-        elif warning_level == 'critical':
+        elif warning_level == WarningLevel.CRITICAL:
             return f"License expires in {days} days ({license.expires}). Please renew soon."
-        elif warning_level == 'warning':
+        elif warning_level == WarningLevel.WARNING:
             return f"License expires in {days} days ({license.expires}). Consider renewing."
-        elif warning_level == 'info':
+        elif warning_level == WarningLevel.INFO:
             return f"License expires in {days} days ({license.expires})."
         
         return None
@@ -270,7 +262,7 @@ class LicenseManager:
             'company': self._cached_license.company,
             'expires': self._cached_license.expires,
             'days_until_expiry': days_until_expiry,
-            'expiry_warning_level': warning_level,
+            'expiry_warning_level': warning_level.value if warning_level else None,
             'allowed_machines': self._cached_license.allowed_machines,
             'version': self._cached_license.version,
         }

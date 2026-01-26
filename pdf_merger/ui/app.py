@@ -15,7 +15,7 @@ from ..config import load_config
 from .components import FileSelector, LicenseFrame, LogArea, Footer
 from .license_ui import update_license_display
 from .handlers import FileSelectionHandler, MergeHandler
-from .enums import StatusColor
+from ..enums import StatusColor
 
 # Setup logging
 setup_logger("pdf_merger", level=20)

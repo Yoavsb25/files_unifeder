@@ -9,9 +9,12 @@ from typing import List, Optional
 
 from .row import Row
 from ..logger import get_logger
-from ..enums import DEFAULT_SERIAL_NUMBERS_COLUMN
+from ..constants import Constants
 
 logger = get_logger("models.merge_job")
+
+# Module-level constants
+DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
 
 
 @dataclass

@@ -31,6 +31,7 @@ from pdf_merger.licensing.license_manager import (
     LicenseManager,
     LicenseStatus
 )
+from pdf_merger.enums import WarningLevel
 
 # Skip all tests if cryptography is not available
 pytestmark = pytest.mark.skipif(
@@ -248,7 +249,7 @@ class TestLicense:
         
         level = license.get_expiry_warning_level()
         
-        assert level == 'expired'
+        assert level == WarningLevel.EXPIRED
     
     def test_license_get_expiry_warning_level_critical(self):
         """Test get_expiry_warning_level for critical (7 days)."""
@@ -262,7 +263,7 @@ class TestLicense:
         
         level = license.get_expiry_warning_level()
         
-        assert level == 'critical'
+        assert level == WarningLevel.CRITICAL
     
     def test_license_get_expiry_warning_level_warning(self):
         """Test get_expiry_warning_level for warning (14 days)."""
@@ -276,7 +277,7 @@ class TestLicense:
         
         level = license.get_expiry_warning_level()
         
-        assert level == 'warning'
+        assert level == WarningLevel.WARNING
     
     def test_license_get_expiry_warning_level_info(self):
         """Test get_expiry_warning_level for info (30 days)."""
@@ -290,7 +291,7 @@ class TestLicense:
         
         level = license.get_expiry_warning_level()
         
-        assert level == 'info'
+        assert level == WarningLevel.INFO
     
     def test_license_get_expiry_warning_level_none(self):
         """Test get_expiry_warning_level when no warning needed."""
@@ -890,7 +891,7 @@ class TestLicenseManager:
         manager._cached_license = license
         
         # Mock the methods
-        with patch.object(license, 'get_expiry_warning_level', return_value='expired'), \
+        with patch.object(license, 'get_expiry_warning_level', return_value=WarningLevel.EXPIRED), \
              patch.object(license, 'days_until_expiry', return_value=-1):
             message = manager.get_expiry_warning_message()
             
@@ -911,7 +912,7 @@ class TestLicenseManager:
         manager = LicenseManager()
         manager._cached_license = license
         
-        with patch.object(license, 'get_expiry_warning_level', return_value='critical'), \
+        with patch.object(license, 'get_expiry_warning_level', return_value=WarningLevel.CRITICAL), \
              patch.object(license, 'days_until_expiry', return_value=5):
             message = manager.get_expiry_warning_message()
             
@@ -933,7 +934,7 @@ class TestLicenseManager:
         manager = LicenseManager()
         manager._cached_license = license
         
-        with patch.object(license, 'get_expiry_warning_level', return_value='warning'), \
+        with patch.object(license, 'get_expiry_warning_level', return_value=WarningLevel.WARNING), \
              patch.object(license, 'days_until_expiry', return_value=10):
             message = manager.get_expiry_warning_message()
             
@@ -955,7 +956,7 @@ class TestLicenseManager:
         manager = LicenseManager()
         manager._cached_license = license
         
-        with patch.object(license, 'get_expiry_warning_level', return_value='info'), \
+        with patch.object(license, 'get_expiry_warning_level', return_value=WarningLevel.INFO), \
              patch.object(license, 'days_until_expiry', return_value=20):
             message = manager.get_expiry_warning_message()
             
@@ -1005,7 +1006,7 @@ class TestLicenseManager:
         manager._cached_license = None
         
         with patch.object(manager, 'load_license', return_value=license), \
-             patch.object(license, 'get_expiry_warning_level', return_value='critical'), \
+             patch.object(license, 'get_expiry_warning_level', return_value=WarningLevel.CRITICAL), \
              patch.object(license, 'days_until_expiry', return_value=5):
             message = manager.get_expiry_warning_message()
             

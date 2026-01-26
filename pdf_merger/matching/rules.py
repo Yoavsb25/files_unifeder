@@ -5,28 +5,17 @@ Provides deterministic file matching with ambiguity detection.
 
 import unicodedata
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Optional
 
+from ..constants import Constants
+from ..enums import MatchConfidence, MatchBehavior
 from ..logger import get_logger
-from ..enums import SOURCE_FILE_EXTENSIONS
 
 logger = get_logger("matching.rules")
 
-
-class MatchConfidence(Enum):
-    """Confidence level of a match."""
-    EXACT = "exact"  # Exact filename match (case-insensitive)
-    STEM = "stem"  # Stem match (filename without extension)
-    LOW = "low"  # Low confidence match
-
-
-class MatchBehavior(Enum):
-    """Behavior when multiple matches are found."""
-    FAIL_FAST = "fail_fast"  # Raise error on ambiguous matches (default for production)
-    WARN_FIRST = "warn_first"  # Warn and use first match (development mode)
-    LOG_ALL = "log_all"  # Log all matches for debugging
+# Module-level constants
+SOURCE_FILE_EXTENSIONS = Constants.SOURCE_FILE_EXTENSIONS
 
 
 @dataclass

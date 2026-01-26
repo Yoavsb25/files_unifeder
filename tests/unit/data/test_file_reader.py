@@ -16,7 +16,7 @@ from pdf_merger.file_reader import (
     _detect_csv_delimiter
 )
 from pdf_merger.exceptions import InvalidFileFormatError
-from pdf_merger.enums import FILE_TYPE_EXCEL, FILE_TYPE_CSV
+from pdf_merger.enums import FileType
 
 
 class TestDetectFileType:
@@ -26,19 +26,19 @@ class TestDetectFileType:
         """Test detection of .xlsx file."""
         file_path = tmp_path / "test.xlsx"
         file_path.touch()
-        assert detect_file_type(file_path) == FILE_TYPE_EXCEL
+        assert detect_file_type(file_path) == FileType.EXCEL
     
     def test_detect_excel_xls(self, tmp_path):
         """Test detection of .xls file."""
         file_path = tmp_path / "test.xls"
         file_path.touch()
-        assert detect_file_type(file_path) == FILE_TYPE_EXCEL
+        assert detect_file_type(file_path) == FileType.EXCEL
     
     def test_detect_csv(self, tmp_path):
         """Test detection of CSV file."""
         file_path = tmp_path / "test.csv"
         file_path.touch()
-        assert detect_file_type(file_path) == FILE_TYPE_CSV
+        assert detect_file_type(file_path) == FileType.CSV
     
     def test_detect_other_extension(self, tmp_path):
         """Test detection of other file extension raises error."""
