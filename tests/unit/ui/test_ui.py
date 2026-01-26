@@ -88,6 +88,7 @@ sys.modules['customtkinter'] = mock_ctk
 
 from pdf_merger.ui.app import PDFMergerApp, run_gui
 from pdf_merger.ui.components import LogHandler
+from pdf_merger.ui.enums import StatusColor
 from pdf_merger.licensing import LicenseStatus
 from pdf_merger.processor import ProcessingResult
 
@@ -263,7 +264,7 @@ class TestPDFMergerApp:
         app._show_error("Error message")
         
         app._log.assert_called_once_with("ERROR: Error message")
-        app.footer.update_status.assert_called_once_with("Error", "red")
+        app.footer.update_status.assert_called_once_with("Error", StatusColor.RED)
     
     def test_run_merge_success(self, tmp_path):
         """Test running merge operation successfully."""
@@ -324,7 +325,7 @@ class TestPDFMergerApp:
         app._on_merge_start()
         
         app.run_button.configure.assert_called_with(state="disabled", text="Processing...")
-        app.footer.update_status.assert_called_with("Processing...", "blue")
+        app.footer.update_status.assert_called_with("Processing...", StatusColor.BLUE)
         app.log_area.clear.assert_called_once()
         assert app._log.call_count >= 4  # Multiple log calls
     
@@ -346,7 +347,7 @@ class TestPDFMergerApp:
         
         assert app.merge_handler.is_processing is False
         app.run_button.configure.assert_called_with(state="normal", text="Run Merge")
-        app.footer.update_status.assert_called_with("Success", "green")
+        app.footer.update_status.assert_called_with("Success", StatusColor.GREEN)
         app.merge_handler.format_result.assert_called_once_with(result)
     
     def test_on_merge_error(self):
@@ -360,7 +361,7 @@ class TestPDFMergerApp:
         
         assert app.merge_handler.is_processing is False
         app.run_button.configure.assert_called_with(state="normal", text="Run Merge")
-        app.footer.update_status.assert_called_with("Error", "red")
+        app.footer.update_status.assert_called_with("Error", StatusColor.RED)
         assert app._log.call_count >= 2  # Multiple log calls
     
     def test_update_ui_state_all_selected(self):
@@ -584,7 +585,7 @@ class TestPDFMergerApp:
         app._on_merge_complete(result)
         
         assert app.merge_handler.is_processing is False
-        app.footer.update_status.assert_called_with("Partial success", "orange")
+        app.footer.update_status.assert_called_with("Partial success", StatusColor.ORANGE)
     
     def test_on_merge_complete_failed(self):
         """Test merge completion with all failures."""
@@ -603,7 +604,7 @@ class TestPDFMergerApp:
         app._on_merge_complete(result)
         
         assert app.merge_handler.is_processing is False
-        app.footer.update_status.assert_called_with("Failed", "red")
+        app.footer.update_status.assert_called_with("Failed", StatusColor.RED)
 
 
 class TestRunGui:

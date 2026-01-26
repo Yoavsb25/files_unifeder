@@ -17,7 +17,6 @@ YELLOW_COLOR = LicenseColor.YELLOW.value
 
 VALID_LICENSE = "✓ License valid"
 EXPIRED_LICENSE = "⚠ License expired - Merge functionality disabled"
-LABEL_FONT = ctk.CTkFont(size=18, weight="bold")
 
 def match_color_to_display_text(
     color: str,
@@ -100,7 +99,7 @@ def update_license_display(license_manager: LicenseManager, license_label) -> bo
             license_label.configure(
                 text=VALID_LICENSE,
                 text_color=GREEN_COLOR,
-                font=LABEL_FONT
+                font=ctk.CTkFont(size=18, weight="bold")
             )
         else:
             warning_msg = license_manager.get_expiry_warning_message()
@@ -117,20 +116,20 @@ def update_license_display(license_manager: LicenseManager, license_label) -> bo
             license_label.configure(
                 text=display_text,
                 text_color=text_color,
-                font=LABEL_FONT
+                font=ctk.CTkFont(size=18, weight="bold")
             )
     elif status == LicenseStatus.EXPIRED:
         license_label.configure(
             text=EXPIRED_LICENSE,
             text_color=ORANGE_COLOR,
-            font=LABEL_FONT
+            font=ctk.CTkFont(size=18, weight="bold")
         )
     else:
         error_msg = license_manager.get_license_error_message(status)
         license_label.configure(
             text=f"✗ {error_msg}",
             text_color=RED_COLOR,
-            font=LABEL_FONT
+            font=ctk.CTkFont(size=18, weight="bold")
         )
 
     return license_valid
