@@ -7,7 +7,7 @@ from typing import Optional
 import customtkinter as ctk
 
 from ..licensing import LicenseManager, LicenseStatus
-from ..enums import LicenseColor, WarningLevel
+from ..core.enums import LicenseColor, WarningLevel
 
 # Constants for backward compatibility and convenience
 GREEN_COLOR = LicenseColor.GREEN.value

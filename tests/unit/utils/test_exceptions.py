@@ -4,7 +4,7 @@ Unit tests for exceptions module.
 
 import pytest
 from pathlib import Path
-from pdf_merger.exceptions import (
+from pdf_merger.utils.exceptions import (
     PDFMergerError,
     FileNotFoundError,
     InvalidFileFormatError,

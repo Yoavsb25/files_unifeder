@@ -9,7 +9,7 @@ import unicodedata
 from pathlib import Path
 from typing import Optional
 
-from ..logger import get_logger
+from .logging_utils import get_logger
 
 logger = get_logger("utils.path_utils")
 

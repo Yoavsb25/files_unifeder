@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-from ..constants import Constants
-from ..enums import MatchConfidence, MatchBehavior
-from ..logger import get_logger
+from ..core.constants import Constants
+from ..core.enums import MatchConfidence, MatchBehavior
+from ..utils.logging_utils import get_logger
 
 logger = get_logger("matching.rules")
 

@@ -7,11 +7,11 @@ import tkinter.filedialog as filedialog
 from pathlib import Path
 from typing import Optional, Callable
 
-from ..validators import validate_file, validate_folder
-from ..exceptions import PDFMergerError
+from ..utils.validators import validate_file, validate_folder
+from ..utils.exceptions import PDFMergerError
 from ..core import run_merge, format_result_summary
-from ..processor import ProcessingResult
-from ..logger import get_logger
+from ..core.merge_processor import ProcessingResult
+from ..utils.logging_utils import get_logger
 
 logger = get_logger("ui.handlers")
 

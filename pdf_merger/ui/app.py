@@ -9,13 +9,13 @@ import customtkinter as ctk
 
 from .. import APP_VERSION
 from ..licensing import LicenseManager
-from ..logger import get_logger, setup_logger
-from ..processor import ProcessingResult
-from ..config import load_config
+from ..utils.logging_utils import get_logger, setup_logger
+from ..core.merge_processor import ProcessingResult
+from ..config.config_manager import load_config
 from .components import FileSelector, LicenseFrame, LogArea, Footer
 from .license_ui import update_license_display
 from .handlers import FileSelectionHandler, MergeHandler
-from ..enums import StatusColor
+from ..core.enums import StatusColor
 
 # Setup logging
 setup_logger("pdf_merger", level=20)
@@ -152,7 +152,7 @@ class PDFMergerApp(ctk.CTk):
             try:
                 path = Path(self.config.input_file)
                 if path.exists():
-                    from ..validators import validate_file
+                    from ..utils.validators import validate_file
                     validate_file(path)
                     self.input_file_path = path
                     self.input_file_selector.set_path(str(path))
@@ -164,7 +164,7 @@ class PDFMergerApp(ctk.CTk):
             try:
                 path = Path(self.config.pdf_dir)
                 if path.exists():
-                    from ..validators import validate_folder
+                    from ..utils.validators import validate_folder
                     validate_folder(path, "Source")
                     self.pdf_dir_path = path
                     self.pdf_dir_selector.set_path(str(path))

@@ -9,8 +9,8 @@ from typing import Optional
 
 from .license_model import License
 from .license_signer import get_embedded_public_key, verify_license_signature
-from ..enums import LicenseStatus, WarningLevel
-from ..logger import get_logger
+from ..core.enums import LicenseStatus, WarningLevel
+from ..utils.logging_utils import get_logger
 
 logger = get_logger("licensing.manager")
 

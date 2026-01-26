@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.backends import default_backend
 
 from .license_model import License
-from ..logger import get_logger
+from ..utils.logging_utils import get_logger
 
 logger = get_logger("licensing.signer")
 

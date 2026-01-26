@@ -9,7 +9,7 @@ from dataclasses import dataclass, asdict
 from typing import Optional, Dict, Any
 from pathlib import Path
 
-from ..logger import get_logger
+from ..utils.logging_utils import get_logger
 from .. import APP_VERSION
 
 logger = get_logger("observability.telemetry")

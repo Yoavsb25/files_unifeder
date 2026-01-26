@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from pdf_merger.models.merge_job import MergeJob
 from pdf_merger.models.row import Row
-from pdf_merger.constants import Constants
+from pdf_merger.core.constants import Constants
 
 
 class TestMergeJob:

@@ -9,7 +9,7 @@ from pdf_merger.models.merge_result import (
     RowStatus,
     MergeResult
 )
-from pdf_merger.processor import ProcessingResult
+from pdf_merger.core.merge_processor import ProcessingResult
 
 
 class TestRowResult:

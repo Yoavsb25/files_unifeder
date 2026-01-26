@@ -6,12 +6,15 @@ This directory contains comprehensive unit tests for the PDF Merger application.
 
 Tests are organized into logical subdirectories by module category for better maintainability and navigation:
 
-- **`unit/data/`** - Data processing: parsing, file reading, validation
-- **`unit/operations/`** - Operations: PDF merging, Excel conversion, processing
-- **`unit/core/`** - Core business logic and orchestration
+- **`unit/core/`** - Core business logic: merge orchestration, processing, serial number parsing, CSV/Excel reading
+- **`unit/operations/`** - Operations: PDF merging, streaming PDF merging, Excel to PDF conversion
 - **`unit/ui/`** - User interface components
 - **`unit/licensing/`** - License management and validation
-- **`unit/utils/`** - Utilities: logging, config, exceptions
+- **`unit/utils/`** - Utilities: logging, validation, path utilities, exceptions
+- **`unit/config/`** - Configuration management
+- **`unit/models/`** - Data models
+- **`unit/matching/`** - Matching rules
+- **`unit/observability/`** - Observability: metrics, telemetry, crash reporting
 
 This organization makes it easy to:
 - Find tests for specific functionality
@@ -43,32 +46,53 @@ tests/
 ├── README.md                # This file
 │
 └── unit/                    # Unit tests organized by category
-    ├── data/                # Data processing tests
-    │   ├── test_data_parser.py      # Serial number parsing
-    │   ├── test_file_reader.py      # CSV/Excel file reading
-    │   └── test_validators.py       # Input validation
+    ├── core/                # Core business logic tests
+    │   ├── test_merge_orchestrator.py    # Merge orchestration
+    │   ├── test_result_reporter.py       # Result reporting
+    │   ├── test_merge_processor.py        # Merge processing
+    │   ├── test_csv_excel_reader.py      # CSV/Excel file reading
+    │   ├── test_serial_number_parser.py  # Serial number parsing
+    │   └── test_core_module_exports.py   # Core module exports
     │
     ├── operations/          # Operations tests
-    │   ├── test_pdf_operations.py   # PDF/Excel finding and merging
-    │   ├── test_excel_converter.py  # Excel to PDF conversion
-    │   └── test_processor.py        # Main processing logic
-    │
-    ├── core/                # Core module tests
-    │   ├── test_core.py             # Core business logic
-    │   └── test_core_init.py        # Core module exports
+    │   ├── test_pdf_merger.py            # PDF merging
+    │   ├── test_streaming_pdf_merger.py # Streaming PDF merging
+    │   └── test_excel_to_pdf_converter.py # Excel to PDF conversion
     │
     ├── ui/                  # UI tests
-    │   ├── test_ui.py               # GUI application
-    │   └── test_ui_init.py          # UI module exports
+    │   ├── test_app.py                  # GUI application
+    │   ├── test_components.py            # UI components
+    │   ├── test_handlers.py              # UI handlers
+    │   ├── test_license_ui.py            # License UI
+    │   └── test_ui_module_exports.py     # UI module exports
     │
     ├── licensing/           # Licensing tests
-    │   ├── test_licensing.py        # License management
-    │   └── test_licensing_init.py   # Licensing module exports
+    │   ├── test_license_manager.py       # License management
+    │   └── test_licensing_module_exports.py # Licensing module exports
+    │
+    ├── config/              # Configuration tests
+    │   ├── test_config_manager.py       # Configuration management
+    │   └── test_config_schema.py        # Configuration schema
+    │
+    ├── models/              # Data model tests
+    │   ├── test_merge_job.py            # Merge job model
+    │   ├── test_merge_result.py         # Merge result model
+    │   └── test_row.py                  # Row model
+    │
+    ├── matching/            # Matching rules tests
+    │   └── test_rules.py               # Matching rules
+    │
+    ├── observability/       # Observability tests
+    │   ├── test_crash_reporting.py     # Crash reporting
+    │   ├── test_metrics.py             # Metrics
+    │   └── test_telemetry.py           # Telemetry
     │
     └── utils/               # Utility tests
-        ├── test_logger.py           # Logging system
-        ├── test_config.py            # Configuration
-        └── test_exceptions.py       # Custom exceptions
+        ├── test_exceptions.py           # Custom exceptions
+        ├── test_logging_utils.py        # Logging system
+        ├── test_path_utils.py           # Path utilities
+        ├── test_validators.py           # Input validation
+        └── test_utils_module_exports.py # Utils module exports
 ```
 
 Each test file follows a consistent structure with test classes grouping related test cases.
@@ -107,7 +131,7 @@ pytest -v
 Run a specific test file:
 
 ```bash
-pytest tests/unit/data/test_data_parser.py
+pytest tests/unit/core/test_serial_number_parser.py
 ```
 
 Run all tests in a category:
@@ -121,13 +145,13 @@ pytest tests/unit/core/          # All core tests
 Run a specific test class:
 
 ```bash
-pytest tests/unit/data/test_data_parser.py::TestSplitSerialNumbers
+pytest tests/unit/core/test_serial_number_parser.py::TestSplitSerialNumbers
 ```
 
 Run a specific test function:
 
 ```bash
-pytest tests/unit/data/test_data_parser.py::TestSplitSerialNumbers::test_split_single_serial_number
+pytest tests/unit/core/test_serial_number_parser.py::TestSplitSerialNumbers::test_split_single_serial_number
 ```
 
 ### Running with Coverage
@@ -148,7 +172,7 @@ The HTML report will be generated in `htmlcov/index.html`. Open it in a browser 
 
 ## Test Details
 
-### unit/data/test_data_parser.py
+### unit/core/test_serial_number_parser.py
 
 Tests for the `split_serial_numbers` function:
 - Parsing single and multiple serial numbers
@@ -164,7 +188,7 @@ Tests for the `split_serial_numbers` function:
 - Empty string handling
 - Invalid input handling
 
-### unit/data/test_validators.py
+### unit/utils/test_validators.py
 
 Tests for validation functions:
 - `validate_serial_number` - Validates serial number format (GRNW_ prefix)
@@ -178,7 +202,7 @@ Tests for validation functions:
 - Files with and without required columns
 - Complete path validation scenarios
 
-### unit/data/test_file_reader.py
+### unit/core/test_csv_excel_reader.py
 
 Tests for file reading operations:
 - `detect_file_type` - Detecting CSV vs Excel files
@@ -195,7 +219,7 @@ Tests for file reading operations:
 - Handling empty files
 - Error handling for invalid files
 
-### unit/operations/test_pdf_operations.py
+### unit/operations/test_pdf_merger.py
 
 Tests for PDF operations:
 - `find_pdf_file` - Finding PDF files in a folder (backward compatibility)
@@ -212,7 +236,7 @@ Tests for PDF operations:
 
 **Note:** PDF library imports are lazy-loaded (only when `merge_pdfs` is called), so tests can run without pypdf installed. Tests mock `_get_pdf_libraries()` to avoid requiring actual PDF libraries.
 
-### unit/operations/test_excel_converter.py
+### unit/operations/test_excel_to_pdf_converter.py
 
 Tests for Excel to PDF conversion:
 - `convert_excel_to_pdf` - Converting Excel files to PDF format
@@ -229,7 +253,7 @@ Tests for Excel to PDF conversion:
 
 **Note:** Excel conversion uses openpyxl (for reading) and reportlab (for PDF generation). Tests mock these libraries to avoid requiring actual Excel files.
 
-### unit/operations/test_processor.py
+### unit/core/test_merge_processor.py
 
 Tests for main processing logic:
 - `ProcessingResult` - Result dataclass
@@ -268,8 +292,8 @@ Tests for custom exception classes:
 You can run tests for specific categories:
 
 ```bash
-# Run all data processing tests
-pytest tests/unit/data/
+# Run all core tests (includes data processing)
+pytest tests/unit/core/
 
 # Run all operations tests
 pytest tests/unit/operations/
@@ -292,12 +316,15 @@ pytest tests/unit/utils/
 When adding new functionality, follow these guidelines:
 
 1. **Place test file in the appropriate category directory**:
-   - Data processing → `tests/unit/data/`
-   - Operations → `tests/unit/operations/`
-   - Core logic → `tests/unit/core/`
+   - Core logic (orchestration, processing, parsing, reading) → `tests/unit/core/`
+   - Operations (PDF merging, Excel conversion) → `tests/unit/operations/`
    - UI components → `tests/unit/ui/`
    - Licensing → `tests/unit/licensing/`
-   - Utilities → `tests/unit/utils/`
+   - Utilities (logging, validation, paths, exceptions) → `tests/unit/utils/`
+   - Configuration → `tests/unit/config/`
+   - Models → `tests/unit/models/`
+   - Matching rules → `tests/unit/matching/`
+   - Observability → `tests/unit/observability/`
 
 2. **Create a test file** following the naming convention: `test_<module_name>.py`
 

@@ -6,9 +6,9 @@ Represents a single row from the input data file.
 from dataclasses import dataclass
 from typing import List, Optional
 
-from ..logger import get_logger
-from ..validators import validate_serial_number
-from ..data_parser import (
+from ..utils.logging_utils import get_logger
+from ..utils.validators import validate_serial_number
+from ..core.serial_number_parser import (
     split_serial_numbers,
     deduplicate_serial_numbers,
     normalize_serial_number

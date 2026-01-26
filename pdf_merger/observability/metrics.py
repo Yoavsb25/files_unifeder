@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from collections import defaultdict
 
-from ..logger import get_logger
+from ..utils.logging_utils import get_logger
 
 logger = get_logger("observability.metrics")
 

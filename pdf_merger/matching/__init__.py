@@ -8,7 +8,7 @@ from .rules import (
     find_matching_files,
     find_best_match,
 )
-from ..enums import MatchConfidence, MatchBehavior
+from ..core.enums import MatchConfidence, MatchBehavior
 
 __all__ = [
     'MatchResult',

@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import List, Optional
 
 from .row import Row
-from ..logger import get_logger
-from ..constants import Constants
+from ..utils.logging_utils import get_logger
+from ..core.constants import Constants
 
 logger = get_logger("models.merge_job")
 

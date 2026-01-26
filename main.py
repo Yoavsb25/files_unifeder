@@ -8,9 +8,9 @@ import sys
 
 from pdf_merger import APP_VERSION
 from pdf_merger.licensing import LicenseManager, LicenseStatus
-from pdf_merger.logger import setup_logger, get_logger
+from pdf_merger.utils.logging_utils import setup_logger, get_logger
 from pdf_merger.ui import run_gui
-from pdf_merger.config import load_config
+from pdf_merger.config.config_manager import load_config
 from pdf_merger.observability import get_crash_reporter, get_metrics_collector, get_telemetry_service
 
 # Setup logging

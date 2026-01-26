@@ -8,12 +8,12 @@ APP_VERSION = '1.0.0'  # Application version for licensing and display
 APP_NAME = 'PDF Batch Merger'  # Application name for UI display
 
 # Import main functions for easy access
-from .processor import process_file, ProcessingResult
-from .pdf_operations import find_pdf_file, find_source_file, merge_pdfs
-from .data_parser import split_serial_numbers
-from .file_reader import read_data_file, get_file_columns
-from .validators import validate_file, validate_folder, validate_paths, validate_serial_number
-from .exceptions import (
+from .core.merge_processor import process_file, ProcessingResult
+from .operations.pdf_merger import find_pdf_file, find_source_file, merge_pdfs
+from .core.serial_number_parser import split_serial_numbers
+from .core.csv_excel_reader import read_data_file, get_file_columns
+from .utils.validators import validate_file, validate_folder, validate_paths, validate_serial_number
+from .utils.exceptions import (
     PDFMergerError,
     FileNotFoundError,
     InvalidFileFormatError,

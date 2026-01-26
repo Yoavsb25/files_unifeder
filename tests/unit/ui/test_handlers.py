@@ -13,8 +13,8 @@ sys.modules['tkinter'] = MagicMock()
 sys.modules['tkinter.filedialog'] = MagicMock()
 
 from pdf_merger.ui.handlers import FileSelectionHandler, MergeHandler
-from pdf_merger.processor import ProcessingResult
-from pdf_merger.exceptions import PDFMergerError
+from pdf_merger.core.merge_processor import ProcessingResult
+from pdf_merger.utils.exceptions import PDFMergerError
 
 
 class TestFileSelectionHandler:
