@@ -44,22 +44,25 @@ jobs:
         pip install -r requirements.txt
     
     - name: Generate keys (if needed)
+      shell: pwsh
       run: |
-        if not exist "tools\private_key.pem" (
+        if (-not (Test-Path "tools\private_key.pem")) {
           python tools\license_generator.py generate-keys --output-dir tools
-          copy tools\public_key.pem pdf_merger\licensing\public_key.pem
-        )
+          Copy-Item tools\public_key.pem pdf_merger\licensing\public_key.pem
+        }
       continue-on-error: true
     
     - name: Generate license
+      shell: pwsh
       run: |
-        python tools\license_generator.py generate-license ^
-          --company "${{ github.event.inputs.company }}" ^
-          --expires "${{ github.event.inputs.expires }}" ^
-          --machines ${{ github.event.inputs.machines }} ^
+        python tools\license_generator.py generate-license `
+          --company "${{ github.event.inputs.company }}" `
+          --expires "${{ github.event.inputs.expires }}" `
+          --machines ${{ github.event.inputs.machines }} `
           --output deliveries\license.json
     
     - name: Build Windows executable
+      shell: cmd
       run: |
         build_config\build.bat
     
