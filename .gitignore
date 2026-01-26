@@ -31,6 +31,8 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# Exception: Allow spec files in build_config for CI/CD
+!build_config/*.spec
 
 # Installer logs
 pip-log.txt
@@ -191,7 +193,7 @@ build/
 dist/
 *.app
 *.exe
-*.spec
+# Note: *.spec is already covered in PyInstaller section above with exception for build_config/
 
 # Config files (may contain user-specific paths)
 config.json
