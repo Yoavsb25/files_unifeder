@@ -8,12 +8,16 @@ from pathlib import Path
 
 block_cipher = None
 
+# Get project root (parent of build_config directory where this spec file is located)
+spec_file_dir = Path(__file__).parent.absolute()
+project_root = spec_file_dir.parent.absolute()
+
 # Collect data files (only include if they exist)
 # Use absolute path resolution to avoid path issues
 datas = []
 try:
-    # Resolve path relative to current working directory (project root)
-    public_key_path = Path('pdf_merger/licensing/public_key.pem').resolve()
+    # Resolve path relative to project root
+    public_key_path = (project_root / 'pdf_merger' / 'licensing' / 'public_key.pem').resolve()
     if public_key_path.exists() and public_key_path.is_file():
         # Use forward slashes for PyInstaller (works on Windows too)
         datas.append((str(public_key_path).replace('\\', '/'), 'pdf_merger/licensing'))
@@ -22,9 +26,14 @@ try:
 except Exception as e:
     print(f"Warning: Could not check for public key: {e}. License verification may not work.")
 
+# Resolve main.py path relative to project root
+main_py_path = (project_root / 'main.py').resolve()
+if not main_py_path.exists():
+    raise FileNotFoundError(f"main.py not found at {main_py_path}")
+
 a = Analysis(
-    ['main.py'],
-    pathex=[],
+    [str(main_py_path)],
+    pathex=[str(project_root)],
     binaries=[],
     datas=datas,
     hiddenimports=[
