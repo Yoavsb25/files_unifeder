@@ -1,0 +1,214 @@
+name: Build Client Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      company:
+        description: 'Customer company name'
+        required: true
+        type: string
+      expires:
+        description: 'License expiration date (YYYY-MM-DD)'
+        required: true
+        type: string
+      machines:
+        description: 'Number of allowed machines'
+        required: false
+        default: '1'
+        type: string
+      platform:
+        description: 'Target platform'
+        required: true
+        type: choice
+        options:
+          - windows
+          - macos
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    if: github.event.inputs.platform == 'windows'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Generate keys (if needed)
+      run: |
+        if not exist "tools\private_key.pem" (
+          python tools\license_generator.py generate-keys --output-dir tools
+          copy tools\public_key.pem pdf_merger\licensing\public_key.pem
+        )
+      continue-on-error: true
+    
+    - name: Generate license
+      run: |
+        python tools\license_generator.py generate-license ^
+          --company "${{ github.event.inputs.company }}" ^
+          --expires "${{ github.event.inputs.expires }}" ^
+          --machines ${{ github.event.inputs.machines }} ^
+          --output deliveries\license.json
+    
+    - name: Build Windows executable
+      run: |
+        build_config\build.bat
+    
+    - name: Create delivery package directory
+      shell: pwsh
+      id: set-delivery-name
+      run: |
+        $date = Get-Date -Format 'yyyyMMdd'
+        $safeCompany = "${{ github.event.inputs.company }}" -replace '[^a-zA-Z0-9 _-]', '' -replace ' ', '_'
+        $deliveryName = "PDF_Batch_Merger_${safeCompany}_${date}"
+        New-Item -ItemType Directory -Path "deliveries\$deliveryName" -Force | Out-Null
+        Write-Output "DELIVERY_NAME=$deliveryName" | Out-File -FilePath $env:GITHUB_ENV -Append
+        Write-Output "delivery-name=$deliveryName" >> $env:GITHUB_OUTPUT
+    
+    - name: Copy application and files
+      shell: pwsh
+      run: |
+        $deliveryName = "${{ steps.set-delivery-name.outputs.delivery-name }}"
+        Copy-Item "dist\PDF Batch Merger.exe" "deliveries\$deliveryName\PDF Batch Merger.exe"
+        Copy-Item "deliveries\license.json" "deliveries\$deliveryName\license.json"
+        Copy-Item "docs\README_USER.md" "deliveries\$deliveryName\User_Guide.md"
+    
+    - name: Create installation instructions
+      shell: pwsh
+      run: |
+        $deliveryName = "${{ steps.set-delivery-name.outputs.delivery-name }}"
+        $company = "${{ github.event.inputs.company }}"
+        $instructions = "PDF Batch Merger - Installation Instructions`n"
+        $instructions += "==================================================`n`n"
+        $instructions += "Company: $company`n"
+        $instructions += "Version: 1.0.0`n"
+        $instructions += "Platform: WINDOWS`n`n"
+        $instructions += "INSTALLATION:`n"
+        $instructions += "--------------------------------------------------`n`n"
+        $instructions += "1. Copy 'PDF Batch Merger.exe' to your desired location`n"
+        $instructions += "2. Copy 'license.json' to the same folder as the .exe`n"
+        $instructions += "   (or to %USERPROFILE%\.pdf_merger\ directory)`n"
+        $instructions += "3. Double-click 'PDF Batch Merger.exe' to launch`n`n"
+        $instructions += "SUPPORT:`n"
+        $instructions += "--------------------------------------------------`n"
+        $instructions += "For technical support or license renewal, contact your software provider.`n"
+        $instructions | Out-File -FilePath "deliveries\$deliveryName\INSTALLATION_INSTRUCTIONS.txt" -Encoding utf8
+    
+    - name: Create zip file with folder structure
+      shell: pwsh
+      run: |
+        $deliveryName = "${{ steps.set-delivery-name.outputs.delivery-name }}"
+        Compress-Archive -Path "deliveries\$deliveryName" -DestinationPath "deliveries\$deliveryName.zip" -Force
+    
+    - name: Upload client package
+      uses: actions/upload-artifact@v4
+      with:
+        name: client-package-windows-${{ github.event.inputs.company }}-${{ github.run_number }}
+        path: deliveries/${{ steps.set-delivery-name.outputs.delivery-name }}.zip
+        retention-days: 30
+
+  build-macos:
+    runs-on: macos-latest
+    if: github.event.inputs.platform == 'macos'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Generate keys (if needed)
+      run: |
+        if [ ! -f "tools/private_key.pem" ]; then
+          python tools/license_generator.py generate-keys --output-dir tools
+          cp tools/public_key.pem pdf_merger/licensing/public_key.pem
+        fi
+      continue-on-error: true
+    
+    - name: Generate license
+      run: |
+        python tools/license_generator.py generate-license \
+          --company "${{ github.event.inputs.company }}" \
+          --expires "${{ github.event.inputs.expires }}" \
+          --machines ${{ github.event.inputs.machines }} \
+          --output deliveries/license.json
+    
+    - name: Make build script executable
+      run: |
+        chmod +x build_config/build.sh
+    
+    - name: Build macOS application
+      run: |
+        build_config/build.sh
+    
+    - name: Create delivery package directory
+      id: set-delivery-name
+      run: |
+        DATE=$(date +%Y%m%d)
+        SAFE_COMPANY=$(echo "${{ github.event.inputs.company }}" | sed 's/[^a-zA-Z0-9 _-]//g' | tr ' ' '_')
+        DELIVERY_NAME="PDF_Batch_Merger_${SAFE_COMPANY}_${DATE}"
+        mkdir -p "deliveries/${DELIVERY_NAME}"
+        echo "DELIVERY_NAME=${DELIVERY_NAME}" >> $GITHUB_ENV
+        echo "delivery-name=${DELIVERY_NAME}" >> $GITHUB_OUTPUT
+    
+    - name: Copy application and files
+      run: |
+        DELIVERY_NAME="${{ steps.set-delivery-name.outputs.delivery-name }}"
+        cp -R "dist/PDF Batch Merger.app" "deliveries/${DELIVERY_NAME}/PDF Batch Merger.app"
+        cp deliveries/license.json "deliveries/${DELIVERY_NAME}/license.json"
+        cp docs/README_USER.md "deliveries/${DELIVERY_NAME}/User_Guide.md"
+    
+    - name: Create installation instructions
+      run: |
+        DELIVERY_NAME="${{ steps.set-delivery-name.outputs.delivery-name }}"
+        COMPANY="${{ github.event.inputs.company }}"
+        {
+          echo "PDF Batch Merger - Installation Instructions"
+          echo "=================================================="
+          echo ""
+          echo "Company: ${COMPANY}"
+          echo "Version: 1.0.0"
+          echo "Platform: MACOS"
+          echo ""
+          echo "INSTALLATION:"
+          echo "--------------------------------------------------"
+          echo ""
+          echo "1. Copy 'PDF Batch Merger.app' to your Applications folder"
+          echo "2. Copy 'license.json' to the same folder as the app"
+          echo "   (or to ~/.pdf_merger/ directory)"
+          echo "3. Double-click 'PDF Batch Merger.app' to launch"
+          echo ""
+          echo "SUPPORT:"
+          echo "--------------------------------------------------"
+          echo "For technical support or license renewal, contact your software provider."
+        } > "deliveries/${DELIVERY_NAME}/INSTALLATION_INSTRUCTIONS.txt"
+    
+    - name: Create zip file with folder structure
+      run: |
+        DELIVERY_NAME="${{ steps.set-delivery-name.outputs.delivery-name }}"
+        cd deliveries
+        zip -r "${DELIVERY_NAME}.zip" "${DELIVERY_NAME}"
+    
+    - name: Upload client package
+      uses: actions/upload-artifact@v4
+      with:
+        name: client-package-macos-${{ github.event.inputs.company }}-${{ github.run_number }}
+        path: deliveries/${{ steps.set-delivery-name.outputs.delivery-name }}.zip
+        retention-days: 30
