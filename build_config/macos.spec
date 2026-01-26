@@ -8,9 +8,8 @@ from pathlib import Path
 
 block_cipher = None
 
-# Get project root (parent of build_config directory where this spec file is located)
-spec_file_dir = Path(__file__).parent.absolute()
-project_root = spec_file_dir.parent.absolute()
+# Get project root from current working directory (build script changes to project root before running)
+project_root = Path(os.getcwd()).absolute()
 
 # Collect data files (only include if they exist)
 # Use absolute path resolution to avoid path issues
