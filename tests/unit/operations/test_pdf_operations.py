@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 from pdf_merger.pdf_operations import find_pdf_file, find_source_file, merge_pdfs, _get_pdf_libraries
-from pdf_merger.enums import PDF_FILE_EXTENSIONS, EXCEL_FILE_EXTENSIONS
+from pdf_merger.constants import Constants
 
 
 class TestFindPdfFile:

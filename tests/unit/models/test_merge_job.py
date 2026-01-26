@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from pdf_merger.models.merge_job import MergeJob
 from pdf_merger.models.row import Row
-from pdf_merger.enums import DEFAULT_SERIAL_NUMBERS_COLUMN
+from pdf_merger.constants import Constants
 
 
 class TestMergeJob:
@@ -27,7 +27,7 @@ class TestMergeJob:
         assert job.input_file == input_file
         assert job.source_folder == source_folder
         assert job.output_folder == output_folder
-        assert job.required_column == DEFAULT_SERIAL_NUMBERS_COLUMN
+        assert job.required_column == Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
         assert len(job.rows) == 0
         assert job.job_id is None
         assert job.metadata == {}

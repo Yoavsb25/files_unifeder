@@ -1,34 +1,86 @@
 """
-Constants and enumerations for PDF Merger.
-Centralized location for all configuration constants.
+Enumerations for PDF Merger.
+Centralized location for all type-safe enumerations.
 """
 
-# File Extensions
-EXCEL_FILE_EXTENSIONS = {'.xlsx', '.xls'}
-CSV_FILE_EXTENSIONS = {'.csv'}
-PDF_FILE_EXTENSIONS = {'.pdf'}
-PDF_FILE_EXTENSION = '.pdf'  # Single extension string for string operations
+from enum import Enum
 
-# Source file extensions (files that can be merged - PDFs and Excel files)
-SOURCE_FILE_EXTENSIONS = PDF_FILE_EXTENSIONS | EXCEL_FILE_EXTENSIONS
 
-# File Types
-FILE_TYPE_EXCEL = 'excel'
-FILE_TYPE_CSV = 'csv'
-FILE_TYPE_PDF = 'pdf'
+# ============================================================================
+# Enumerations
+# ============================================================================
 
-# Default Column Names
-DEFAULT_SERIAL_NUMBERS_COLUMN = 'serial_numbers'
+class FileType(Enum):
+    """File type enumeration."""
+    EXCEL = "excel"
+    CSV = "csv"
+    PDF = "pdf"
 
-# CSV Configuration
-DEFAULT_CSV_DELIMITER = ','
-CSV_SAMPLE_SIZE = 1024  # Bytes to read for delimiter detection
-UTF_8_ENCODING = 'utf-8'
 
-# Output File Configuration
-OUTPUT_FILENAME_PATTERN = 'merged_row_{}.pdf'
+class LicenseStatus(Enum):
+    """License validation status."""
+    VALID = "valid"
+    EXPIRED = "expired"
+    INVALID_SIGNATURE = "invalid_signature"
+    NOT_FOUND = "not_found"
+    INVALID_FORMAT = "invalid_format"
+    VERSION_MISMATCH = "version_mismatch"
 
-# Serial Number Configuration
-SERIAL_NUMBER_PREFIX = 'GRNW_'
-SERIAL_NUMBER_PREFIX_LOWER = 'grnw_'
-SERIAL_NUMBER_SEPARATOR = ','  # Comma separator for multiple serial numbers
+
+class MatchConfidence(Enum):
+    """Confidence level of a match."""
+    EXACT = "exact"
+    STEM = "stem"
+    LOW = "low"
+
+
+class MatchBehavior(Enum):
+    """Behavior when multiple matches are found."""
+    FAIL_FAST = "fail_fast"
+    WARN_FIRST = "warn_first"
+    LOG_ALL = "log_all"
+
+
+class RowStatus(Enum):
+    """Status of a row processing operation."""
+    SUCCESS = "success"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+    PARTIAL = "partial"
+
+
+class LicenseColor(Enum):
+    """License status colors for UI display."""
+    GREEN = "green"
+    RED = "red"
+    ORANGE = "orange"
+    YELLOW = "yellow"
+
+
+class WarningLevel(Enum):
+    """License expiry warning levels."""
+    EXPIRED = "expired"
+    CRITICAL = "critical"
+    WARNING = "warning"
+    INFO = "info"
+
+
+class StatusColor(Enum):
+    """Status colors for UI components (footer, etc.)."""
+    WHITE = "white"
+    GREEN = "green"
+    RED = "red"
+    ORANGE = "orange"
+    BLUE = "blue"
+
+
+class PageOrientation(Enum):
+    """Page orientation for PDF generation."""
+    PORTRAIT = "portrait"
+    LANDSCAPE = "landscape"
+
+
+class PageSize(Enum):
+    """Page size for PDF generation."""
+    LETTER = "letter"
+    A4 = "A4"

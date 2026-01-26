@@ -14,7 +14,7 @@ from .excel_converter import convert_excel_to_pdf
 from .file_reader import read_data_file
 from .logger import get_logger
 from .exceptions import PDFMergerError
-from .enums import DEFAULT_SERIAL_NUMBERS_COLUMN, OUTPUT_FILENAME_PATTERN, EXCEL_FILE_EXTENSIONS
+from .constants import Constants
 from .models import Row, MergeJob, MergeResult, RowResult, RowStatus
 from .validators import validate_serial_number
 from .data_parser import (
@@ -26,6 +26,12 @@ from .observability import get_metrics_collector
 from .matching import MatchBehavior
 
 logger = get_logger("processor")
+
+# Module-level constants
+EXCEL_FILE_EXTENSIONS = Constants.EXCEL_FILE_EXTENSIONS
+OUTPUT_FILENAME_PATTERN = Constants.OUTPUT_FILENAME_PATTERN
+DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+BYTES_PER_MB = Constants.BYTES_PER_MB
 
 
 @dataclass
@@ -271,7 +277,7 @@ def process_row_with_models(
             metrics.record_counter("rows_successful")
             # Record file size if available
             try:
-                file_size_mb = output_path.stat().st_size / (1024 * 1024)
+                file_size_mb = output_path.stat().st_size / BYTES_PER_MB
                 metrics.record_gauge("output_file_size_mb", file_size_mb)
             except Exception:
                 pass

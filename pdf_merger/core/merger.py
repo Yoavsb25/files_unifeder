@@ -9,10 +9,13 @@ from typing import Optional
 from ..processor import process_file, process_job, ProcessingResult
 from ..models import MergeJob, MergeResult, Row
 from ..file_reader import read_data_file
-from ..enums import DEFAULT_SERIAL_NUMBERS_COLUMN
+from ..constants import Constants
 from ..logger import get_logger
 
 logger = get_logger("core.merger")
+
+# Module-level constants
+DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
 
 
 def run_merge(

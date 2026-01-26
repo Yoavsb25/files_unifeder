@@ -8,19 +8,17 @@ import pandas as pd
 from pathlib import Path
 from typing import Iterator, Dict, Any, List
 from .exceptions import InvalidFileFormatError, MissingColumnError
-from .enums import (
-    EXCEL_FILE_EXTENSIONS,
-    CSV_FILE_EXTENSIONS,
-    FILE_TYPE_EXCEL,
-    FILE_TYPE_CSV,
-    DEFAULT_CSV_DELIMITER,
-    CSV_SAMPLE_SIZE,
-    PDF_FILE_EXTENSIONS,
-    FILE_TYPE_PDF,
-    UTF_8_ENCODING,
-)
+from .constants import Constants
+from .enums import FileType
 
-def detect_file_type(file_path: Path) -> str:
+# Module-level constants
+EXCEL_FILE_EXTENSIONS = Constants.EXCEL_FILE_EXTENSIONS
+CSV_FILE_EXTENSIONS = Constants.CSV_FILE_EXTENSIONS
+UTF_8_ENCODING = Constants.UTF_8_ENCODING
+CSV_SAMPLE_SIZE = Constants.CSV_SAMPLE_SIZE
+DEFAULT_CSV_DELIMITER = Constants.DEFAULT_CSV_DELIMITER
+
+def detect_file_type(file_path: Path) -> FileType:
     """
     Detect the file type based on its extension.
 
@@ -28,16 +26,16 @@ def detect_file_type(file_path: Path) -> str:
         file_path: Path to the file
 
     Returns:
-        One of: 'excel', 'csv'
+        FileType enum value
 
     Raises:
         InvalidFileFormatError: If the file type is unsupported
     """
     file_extension = file_path.suffix.lower()
     if file_extension in EXCEL_FILE_EXTENSIONS:
-        return FILE_TYPE_EXCEL
+        return FileType.EXCEL
     elif file_extension in CSV_FILE_EXTENSIONS:
-        return FILE_TYPE_CSV
+        return FileType.CSV
     raise InvalidFileFormatError(f"Unsupported file type: {file_extension}", file_path=file_path)
 
 
@@ -134,9 +132,9 @@ def read_data_file(file_path: Path) -> Iterator[Dict[str, Any]]:
     """
     file_type = detect_file_type(file_path)
     
-    if file_type == FILE_TYPE_EXCEL:
+    if file_type == FileType.EXCEL:
         yield from read_excel(file_path)
-    elif file_type == FILE_TYPE_CSV:
+    elif file_type == FileType.CSV:
         yield from read_csv(file_path)
     else:
         raise InvalidFileFormatError(f"Unsupported file type: {file_type}", file_path=file_path)

@@ -15,12 +15,12 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from .enums import DEFAULT_SERIAL_NUMBERS_COLUMN
+from .constants import Constants
 from .logger import get_logger
 from .config_schema import ConfigSchema
 
 logger = get_logger("config")
-
+DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN # type: ignore
 # Environment variable names
 ENV_INPUT_FILE = 'PDF_MERGER_INPUT_FILE'
 ENV_SOURCE_DIR = 'PDF_MERGER_SOURCE_DIR'
