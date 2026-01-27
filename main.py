@@ -5,6 +5,8 @@ Launches GUI application with license checking.
 """
 
 import sys
+import tkinter as tk
+from tkinter import messagebox
 
 from pdf_merger import APP_VERSION
 from pdf_merger.licensing import LicenseManager, LicenseStatus
@@ -16,6 +18,35 @@ from pdf_merger.observability import get_crash_reporter, get_metrics_collector, 
 # Setup logging
 setup_logger("pdf_merger", level=20)  # INFO level
 logger = get_logger("main")
+
+
+def show_error_dialog(title: str, message: str):
+    """
+    Show an error dialog box.
+    Works even when console=False in PyInstaller builds.
+    """
+    try:
+        # Create a hidden root window for the messagebox
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+        root.attributes('-topmost', True)  # Bring to front
+        
+        # Show error dialog
+        messagebox.showerror(title, message)
+        
+        # Clean up
+        root.destroy()
+    except Exception as e:
+        # Fallback: try to print to stderr (might work in some cases)
+        logger.error(f"Failed to show error dialog: {e}")
+        try:
+            print(f"\n{'='*60}", file=sys.stderr)
+            print(f"{title}", file=sys.stderr)
+            print("="*60, file=sys.stderr)
+            print(message, file=sys.stderr)
+            print("="*60, file=sys.stderr)
+        except Exception:
+            pass  # Last resort - nothing we can do
 
 
 def main():
@@ -55,23 +86,32 @@ def main():
             run_gui()
         except Exception as e:
             logger.error(f"Error launching GUI: {e}")
-            print(f"Error: {e}")
+            error_msg = f"An error occurred while starting the application:\n\n{str(e)}\n\nPlease contact support for assistance."
+            show_error_dialog("Application Error", error_msg)
             sys.exit(1)
     else:
-        # Invalid or expired license - show error and exit
+        # Invalid or expired license - show error dialog and exit
         error_msg = license_manager.get_license_error_message(license_status)
+        
         if license_status == LicenseStatus.EXPIRED:
-            print(f"\n{'='*60}")
-            print("LICENSE EXPIRED")
-            print("="*60)
+            title = "License Expired"
+            full_message = (
+                "LICENSE EXPIRED\n\n"
+                f"{error_msg}\n\n"
+                "The application cannot run without a valid license.\n"
+                "Please contact support for assistance."
+            )
         else:
-            print(f"\n{'='*60}")
-            print("LICENSE ERROR")
-            print("="*60)
-        print(error_msg)
-        print("="*60)
-        print("\nThe application cannot run without a valid license.")
-        print("Please contact support for assistance.\n")
+            title = "License Error"
+            full_message = (
+                "LICENSE ERROR\n\n"
+                f"{error_msg}\n\n"
+                "The application cannot run without a valid license.\n"
+                "Please contact support for assistance."
+            )
+        
+        logger.error(f"License validation failed: {license_status}")
+        show_error_dialog(title, full_message)
         sys.exit(1)
 
 
