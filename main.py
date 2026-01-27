@@ -93,6 +93,14 @@ def main():
         # Invalid or expired license - show error dialog and exit
         error_msg = license_manager.get_license_error_message(license_status)
         
+        # Get log file path for user reference
+        try:
+            from pathlib import Path
+            log_file = Path.home() / '.pdf_merger' / 'logs' / 'pdf_merger.log'
+            log_file_info = f"\n\nFor more details, check the log file at:\n{log_file}"
+        except Exception:
+            log_file_info = ""
+        
         if license_status == LicenseStatus.EXPIRED:
             title = "License Expired"
             full_message = (
@@ -100,6 +108,7 @@ def main():
                 f"{error_msg}\n\n"
                 "The application cannot run without a valid license.\n"
                 "Please contact support for assistance."
+                f"{log_file_info}"
             )
         else:
             title = "License Error"
@@ -108,6 +117,7 @@ def main():
                 f"{error_msg}\n\n"
                 "The application cannot run without a valid license.\n"
                 "Please contact support for assistance."
+                f"{log_file_info}"
             )
         
         logger.error(f"License validation failed: {license_status}")
