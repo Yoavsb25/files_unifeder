@@ -324,6 +324,46 @@ pip install -r requirements.txt
 3. On macOS, check System Preferences → Security & Privacy for display permissions
 4. Try running from terminal to see error messages
 
+### Issue: Windows executable doesn't start (no window appears)
+
+**Problem**: The packaged Windows .exe file doesn't show any window when double-clicked.
+
+**Common Causes and Solutions:**
+
+1. **License file missing or invalid:**
+   - The app requires `license.json` in the same folder as the .exe file
+   - Or place it in `%USERPROFILE%\.pdf_merger\license.json`
+   - An error dialog should appear if this is the issue (after the fix)
+
+2. **Check the log file:**
+   - Logs are written to: `%USERPROFILE%\.pdf_merger\logs\pdf_merger.log`
+   - Open this file in Notepad to see detailed error messages
+   - Look for license errors, missing dependencies, or other issues
+
+3. **Missing Visual C++ Redistributables:**
+   - Some Python packages require Visual C++ runtime libraries
+   - Download and install: [Microsoft Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+
+4. **Antivirus blocking the application:**
+   - Some antivirus software may block unsigned executables
+   - Check your antivirus logs or temporarily disable it to test
+   - Add the application folder to antivirus exclusions if needed
+
+5. **Run from Command Prompt for debugging:**
+   - Open Command Prompt in the folder containing the .exe
+   - Run: `"PDF Batch Merger.exe"` (with quotes)
+   - This may show error messages that aren't visible when double-clicking
+
+6. **Check Windows Event Viewer:**
+   - Open Event Viewer (Windows + R, type `eventvwr`)
+   - Check Windows Logs → Application for errors related to the app
+
+**If the app still doesn't start:**
+- Contact support with:
+  - The contents of `%USERPROFILE%\.pdf_merger\logs\pdf_merger.log`
+  - Windows version (run `winver` to check)
+  - Any error messages from Event Viewer
+
 ---
 
 ## Next Steps

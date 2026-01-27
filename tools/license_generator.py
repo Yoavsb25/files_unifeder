@@ -30,7 +30,7 @@ from pdf_merger.licensing.license_signer import (
     save_public_key,
     generate_key_pair
 )
-from pdf_merger.logger import setup_logger, get_logger
+from pdf_merger.utils.logging_utils import setup_logger, get_logger
 
 # Setup logging
 setup_logger("pdf_merger", level=20)
