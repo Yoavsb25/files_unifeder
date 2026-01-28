@@ -37,16 +37,26 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
     
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install --upgrade-strategy only-if-needed --no-warn-script-location -r requirements.txt
     
     - name: Generate keys (if needed)
       shell: pwsh
@@ -166,16 +176,26 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
     
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install --upgrade-strategy only-if-needed --no-warn-script-location -r requirements.txt
     
     - name: Generate keys (if needed)
       run: |
