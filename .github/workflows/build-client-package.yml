@@ -23,6 +23,11 @@ on:
         options:
           - windows
           - macos
+      upload_to_drive:
+        description: 'Upload ZIP to Google Drive'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-windows:
@@ -115,6 +120,37 @@ jobs:
       run: |
         $deliveryName = "${{ steps.set-delivery-name.outputs.delivery-name }}"
         Compress-Archive -Path "deliveries\$deliveryName" -DestinationPath "deliveries\$deliveryName.zip" -Force
+    
+    - name: Write Google Drive credentials to temp file
+      if: github.event.inputs.upload_to_drive == 'true'
+      shell: pwsh
+      env:
+        GOOGLE_DRIVE_API_KEY: ${{ secrets.GOOGLE_DRIVE_API_KEY }}
+      run: |
+        $credPath = Join-Path $env:RUNNER_TEMP "gcp_sa_key.json"
+        Set-Content -Path $credPath -Value "$env:GOOGLE_DRIVE_API_KEY" -NoNewline -Encoding utf8
+    
+    - name: Upload ZIP to Google Drive
+      if: github.event.inputs.upload_to_drive == 'true'
+      shell: pwsh
+      env:
+        GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+      run: |
+        $credPath = Join-Path $env:RUNNER_TEMP "gcp_sa_key.json"
+        $deliveryName = "${{ steps.set-delivery-name.outputs.delivery-name }}"
+        python tools\upload_to_drive.py `
+          --credentials "$credPath" `
+          --folder-id "$env:GOOGLE_DRIVE_FOLDER_ID" `
+          --file-path "deliveries\$deliveryName.zip" `
+          --mime-type "application/zip" `
+          --overwrite "skip"
+    
+    - name: Delete Google Drive credentials file
+      if: github.event.inputs.upload_to_drive == 'true'
+      shell: pwsh
+      run: |
+        $credPath = Join-Path $env:RUNNER_TEMP "gcp_sa_key.json"
+        if (Test-Path $credPath) { Remove-Item $credPath -Force }
     
     - name: Upload client package
       uses: actions/upload-artifact@v4
@@ -212,6 +248,35 @@ jobs:
         DELIVERY_NAME="${{ steps.set-delivery-name.outputs.delivery-name }}"
         cd deliveries
         zip -r "${DELIVERY_NAME}.zip" "${DELIVERY_NAME}"
+    
+    - name: Write Google Drive credentials to temp file
+      if: github.event.inputs.upload_to_drive == 'true'
+      env:
+        GOOGLE_DRIVE_API_KEY: ${{ secrets.GOOGLE_DRIVE_API_KEY }}
+      run: |
+        CRED_PATH="$RUNNER_TEMP/gcp_sa_key.json"
+        printf '%s' "$GOOGLE_DRIVE_API_KEY" > "$CRED_PATH"
+        chmod 600 "$CRED_PATH"
+    
+    - name: Upload ZIP to Google Drive
+      if: github.event.inputs.upload_to_drive == 'true'
+      env:
+        GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+      run: |
+        CRED_PATH="$RUNNER_TEMP/gcp_sa_key.json"
+        DELIVERY_NAME="${{ steps.set-delivery-name.outputs.delivery-name }}"
+        python tools/upload_to_drive.py \
+          --credentials "$CRED_PATH" \
+          --folder-id "$GOOGLE_DRIVE_FOLDER_ID" \
+          --file-path "deliveries/${DELIVERY_NAME}.zip" \
+          --mime-type "application/zip" \
+          --overwrite "skip"
+    
+    - name: Delete Google Drive credentials file
+      if: github.event.inputs.upload_to_drive == 'true'
+      run: |
+        CRED_PATH="$RUNNER_TEMP/gcp_sa_key.json"
+        [ -f "$CRED_PATH" ] && rm -f "$CRED_PATH"
     
     - name: Upload client package
       uses: actions/upload-artifact@v4
