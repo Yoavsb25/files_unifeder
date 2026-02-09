@@ -23,11 +23,6 @@ on:
         options:
           - windows
           - macos
-      upload_to_drive:
-        description: 'Upload ZIP to Google Drive'
-        required: false
-        default: false
-        type: boolean
 
 jobs:
   build-windows:
@@ -123,7 +118,6 @@ jobs:
         Compress-Archive -Path "deliveries\$deliveryName" -DestinationPath "deliveries\$deliveryName.zip" -Force
     
     - name: Upload ZIP to Google Drive
-      if: github.event.inputs.upload_to_drive == true
       env:
         GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
         GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
@@ -239,7 +233,6 @@ jobs:
         zip -r "${DELIVERY_NAME}.zip" "${DELIVERY_NAME}"
     
     - name: Upload ZIP to Google Drive
-      if: github.event.inputs.upload_to_drive == true
       env:
         GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
         GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
