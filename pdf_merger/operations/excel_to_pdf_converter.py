@@ -4,7 +4,7 @@ Handles converting Excel files to PDF format with pagination and wide table supp
 """
 
 from pathlib import Path
-from typing import Optional, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 from ..utils.logging_utils import get_logger
 from ..core.constants import Constants
@@ -18,8 +18,16 @@ DEFAULT_PAGE_SIZE = Constants.DEFAULT_PAGE_SIZE
 DEFAULT_ORIENTATION = Constants.DEFAULT_ORIENTATION
 DEFAULT_MAX_COLS_PER_PAGE = Constants.DEFAULT_MAX_COLS_PER_PAGE
 
+__all__ = [
+    "convert_excel_to_pdf",
+    "EXCEL_FILE_EXTENSIONS",
+    "DEFAULT_PAGE_SIZE",
+    "DEFAULT_ORIENTATION",
+    "DEFAULT_MAX_COLS_PER_PAGE",
+]
 
-def _safe_str(value) -> str:
+
+def _safe_str(value: Any) -> str:
     """
     Safely convert a value to string, handling None and other types.
     

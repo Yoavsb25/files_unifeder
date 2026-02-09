@@ -9,7 +9,7 @@ Validation Strategy:
 
 from pathlib import Path
 from .logging_utils import get_logger
-from .exceptions import MissingColumnError, FileNotFoundError, ValidationError, InvalidFileFormatError
+from .exceptions import MissingColumnError, PathNotFoundError, ValidationError, InvalidFileFormatError
 from ..core.constants import Constants
 from ..core.csv_excel_reader import get_file_columns
 
@@ -52,15 +52,15 @@ def validate_folder(folder_path: Path, folder_type: str = "Folder") -> None:
         folder_type: Type description for error messages (e.g., "Source", "Output")
         
     Raises:
-        FileNotFoundError: If folder doesn't exist or is not a directory
+        PathNotFoundError: If folder doesn't exist or is not a directory
     """
     if not folder_path.exists():
         logger.error(f"{folder_type} folder not found: {folder_path}")
-        raise FileNotFoundError(folder_path, file_type=f"{folder_type} folder")
+        raise PathNotFoundError(folder_path, file_type=f"{folder_type} folder")
     
     if not folder_path.is_dir():
         logger.error(f"{folder_path} is not a directory")
-        raise FileNotFoundError(folder_path, file_type=f"{folder_type} (not a directory)")
+        raise PathNotFoundError(folder_path, file_type=f"{folder_type} (not a directory)")
 
 
 def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
@@ -72,13 +72,13 @@ def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS
         required_column: Name of the required column (default: 'serial_numbers')
         
     Raises:
-        FileNotFoundError: If file doesn't exist
+        PathNotFoundError: If file doesn't exist
         MissingColumnError: If required column is missing
         InvalidFileFormatError: If file cannot be read (wrapped from exceptions)
     """
     if not file_path.exists():
         logger.error(f"File not found: {file_path}")
-        raise FileNotFoundError(file_path, file_type="Data file")
+        raise PathNotFoundError(file_path, file_type="Data file")
     
     try:
         columns = get_file_columns(file_path)
@@ -87,7 +87,7 @@ def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS
             logger.error(f"'{required_column}' column not found in file.")
             logger.error(f"Available columns: {', '.join(columns)}")
             raise MissingColumnError(required_column, columns, file_path)
-    except (MissingColumnError, FileNotFoundError):
+    except (MissingColumnError, PathNotFoundError):
         raise
     except Exception as e:
         logger.error(f"Error reading file: {e}")
@@ -106,14 +106,14 @@ def validate_paths(file_path: Path, source_folder: Path, output_folder: Path,
         required_column: Name of the required column
         
     Raises:
-        FileNotFoundError: If file or folder doesn't exist
+        PathNotFoundError: If file or folder doesn't exist
         MissingColumnError: If required column is missing from file
         ValidationError: If output folder parent doesn't exist
     """
-    # Validate file (raises FileNotFoundError or MissingColumnError)
+    # Validate file (raises PathNotFoundError or MissingColumnError)
     validate_file(file_path, required_column)
     
-    # Validate source folder (raises FileNotFoundError)
+    # Validate source folder (raises PathNotFoundError)
     validate_folder(source_folder, "Source")
     
     # Validate output folder parent exists (if output folder is not root)

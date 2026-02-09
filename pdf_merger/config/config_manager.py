@@ -75,13 +75,19 @@ class AppConfig:
         """Get output directory as Path object."""
         return Path(self.output_dir) if self.output_dir else None
     
+    def _merge_required_column(self, other: 'AppConfig') -> str:
+        """Other wins unless both are default."""
+        if other.required_column != DEFAULT_SERIAL_NUMBERS_COLUMN:
+            return other.required_column
+        return self.required_column
+
     def merge(self, other: 'AppConfig') -> 'AppConfig':
         """
         Merge another config into this one (other takes precedence for non-None values).
-        
+
         Args:
             other: Config to merge in
-            
+
         Returns:
             New merged config
         """
@@ -89,7 +95,7 @@ class AppConfig:
             input_file=other.input_file if other.input_file else self.input_file,
             pdf_dir=other.pdf_dir if other.pdf_dir else self.pdf_dir,
             output_dir=other.output_dir if other.output_dir else self.output_dir,
-            required_column=other.required_column if other.required_column != DEFAULT_SERIAL_NUMBERS_COLUMN or self.required_column == DEFAULT_SERIAL_NUMBERS_COLUMN else self.required_column,
+            required_column=self._merge_required_column(other),
             metrics_enabled=other.metrics_enabled if hasattr(other, 'metrics_enabled') else self.metrics_enabled,
             telemetry_enabled=other.telemetry_enabled if hasattr(other, 'telemetry_enabled') else self.telemetry_enabled,
             crash_reporting_enabled=other.crash_reporting_enabled if hasattr(other, 'crash_reporting_enabled') else self.crash_reporting_enabled,

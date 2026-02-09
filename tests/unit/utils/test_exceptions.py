@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from pdf_merger.utils.exceptions import (
     PDFMergerError,
-    FileNotFoundError,
+    PathNotFoundError,
     InvalidFileFormatError,
     MissingColumnError,
     PDFProcessingError,
@@ -31,33 +31,33 @@ class TestPDFMergerError:
         assert isinstance(error, Exception)
 
 
-class TestFileNotFoundError:
-    """Test cases for FileNotFoundError."""
-    
-    def test_file_not_found_error_with_path(self):
-        """Test creating FileNotFoundError with path."""
+class TestPathNotFoundError:
+    """Test cases for PathNotFoundError."""
+
+    def test_path_not_found_error_with_path(self):
+        """Test creating PathNotFoundError with path."""
         path = Path("/nonexistent/file.txt")
-        error = FileNotFoundError(path)
-        
+        error = PathNotFoundError(path)
+
         assert error.path == path
         assert error.file_type == "File"
         assert "File not found" in str(error)
         assert str(path) in str(error)
-    
-    def test_file_not_found_error_with_custom_type(self):
-        """Test creating FileNotFoundError with custom file type."""
+
+    def test_path_not_found_error_with_custom_type(self):
+        """Test creating PathNotFoundError with custom file type."""
         path = Path("/nonexistent/folder")
-        error = FileNotFoundError(path, file_type="Source folder")
-        
+        error = PathNotFoundError(path, file_type="Source folder")
+
         assert error.path == path
         assert error.file_type == "Source folder"
         assert "Source folder not found" in str(error)
-    
-    def test_file_not_found_error_with_string_path(self):
-        """Test creating FileNotFoundError with string path."""
+
+    def test_path_not_found_error_with_string_path(self):
+        """Test creating PathNotFoundError with string path."""
         path_str = "/nonexistent/file.txt"
-        error = FileNotFoundError(path_str)
-        
+        error = PathNotFoundError(path_str)
+
         assert isinstance(error.path, Path)
         assert str(error.path) == path_str
 
