@@ -154,7 +154,7 @@ def process_job(
     result = MergeResult(
         total_rows=job.get_total_rows(),
         successful_merges=0,
-        job_id=job.job_id
+        job_id=job.job_id,
     )
     
     start_time = time.time()

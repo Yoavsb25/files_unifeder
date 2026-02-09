@@ -267,6 +267,7 @@ See `docs/TESTING.md` for more details on test structure and conventions.
 - **Installation & Packaging**: `docs/INSTALLATION.md`
 - **Architecture Overview**: `docs/ARCHITECTURE.md`
 - **Testing Guide**: `docs/TESTING.md`
+- **Contributing & style**: [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/STYLE.md](docs/STYLE.md)
 - **License Tools**: `tools/README.md`
 
 ---

@@ -38,7 +38,7 @@ def _safe_str(value: Any) -> str:
         String representation of the value
     """
     if value is None:
-        return ''
+        return ""
     return str(value)
 
 
@@ -108,25 +108,25 @@ def convert_excel_to_pdf(
     page_size: str = DEFAULT_PAGE_SIZE,
     orientation: str = DEFAULT_ORIENTATION,
     auto_size_columns: bool = True,
-    max_cols_per_page: int = DEFAULT_MAX_COLS_PER_PAGE
+    max_cols_per_page: int = DEFAULT_MAX_COLS_PER_PAGE,
 ) -> bool:
-    """
-    Convert an Excel file to PDF format using openpyxl and reportlab.
+    """Convert an Excel file to PDF using openpyxl and reportlab.
+
     Supports pagination for wide tables and auto-sizing columns.
-    
+
     Args:
-        excel_path: Path to the Excel file (.xlsx or .xls)
-        output_path: Path where the PDF will be saved
-        page_size: Page size ('letter', 'A4', etc.) - default: 'letter'
-        orientation: Page orientation ('portrait', 'landscape') - default: 'portrait'
-        auto_size_columns: Whether to auto-size columns based on content - default: True
-        max_cols_per_page: Maximum columns per page for wide tables - default: 8
-        
+        excel_path: Path to the Excel file (.xlsx or .xls).
+        output_path: Path where the PDF will be saved.
+        page_size: Page size (e.g. "letter", "A4"). Default: "letter".
+        orientation: Page orientation ("portrait", "landscape"). Default: "portrait".
+        auto_size_columns: Whether to auto-size columns based on content. Default: True.
+        max_cols_per_page: Maximum columns per page for wide tables. Default: 8.
+
     Returns:
-        True if successful, False otherwise
-        
+        True if successful, False otherwise.
+
     Raises:
-        ImportError: If required libraries are not installed
+        ImportError: If required libraries (openpyxl, reportlab) are not installed.
     """
     if not excel_path.exists():
         logger.error(f"Excel file not found: {excel_path}")

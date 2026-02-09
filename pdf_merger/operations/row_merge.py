@@ -63,7 +63,8 @@ def _convert_excel_files_to_pdfs(
             temp_pdf_path = Path(temp_pdf.name)
             temp_pdf_files.append(temp_pdf_path)
 
-            if convert_excel_to_pdf(source_path, temp_pdf_path):
+            success = convert_excel_to_pdf(source_path, temp_pdf_path)
+            if success:
                 pdf_paths.append(temp_pdf_path)
                 logger.info(f"  ✓ Converted {source_path.name} to PDF")
             else:

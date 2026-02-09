@@ -193,7 +193,7 @@ def merge_pdfs(
                 return False
         
         # Write the merged PDF
-        with open(output_path, 'wb') as output_file:
+        with open(output_path, "wb") as output_file:
             writer.write(output_file)
         
         return True

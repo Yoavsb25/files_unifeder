@@ -72,34 +72,34 @@ def run_merge_job(
     output_dir: Path,
     required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
     job_id: Optional[str] = None,
-    fail_on_ambiguous: bool = True
+    fail_on_ambiguous: bool = True,
 ) -> MergeResult:
-    """
-    Run the merge operation using domain models.
-    
+    """Run the merge operation using domain models.
+
     Args:
-        input_file: Path to CSV or Excel file
-        pdf_dir: Path to folder containing PDF and Excel files
-        output_dir: Path to output folder
-        required_column: Name of the column containing serial numbers
-        job_id: Optional job identifier for tracking
-        
+        input_file: Path to CSV or Excel file.
+        pdf_dir: Path to folder containing PDF and Excel files.
+        output_dir: Path to output folder.
+        required_column: Name of the column containing serial numbers.
+        job_id: Optional job identifier for tracking.
+        fail_on_ambiguous: If True, raise on ambiguous file matches.
+
     Returns:
-        MergeResult with detailed processing results
+        MergeResult with detailed processing results.
     """
-    logger.info(f"Starting merge job {job_id or 'default'}")
+    logger.info(f"Starting merge job {job_id or \"default\"}")
     logger.info(f"  Input file: {input_file}")
     logger.info(f"  Source directory: {pdf_dir}")
     logger.info(f"  Output directory: {output_dir}")
     
     # Create merge job
-    job = MergeJob.create(
-        input_file=input_file,
-        source_folder=pdf_dir,
-        output_folder=output_dir,
-        required_column=required_column,
-        job_id=job_id
-    )
+        job = MergeJob.create(
+            input_file=input_file,
+            source_folder=pdf_dir,
+            output_folder=output_dir,
+            required_column=required_column,
+            job_id=job_id,
+        )
     
     # Load rows from file
     try:
@@ -111,13 +111,13 @@ def run_merge_job(
         return MergeResult(
             total_rows=0,
             successful_merges=0,
-            job_id=job_id
+            job_id=job_id,
         )
     
     # Process job
     result = process_job(job, fail_on_ambiguous=fail_on_ambiguous)
     
-    logger.info(f"Merge job {job_id or 'default'} completed")
+    logger.info(f"Merge job {job_id or \"default\"} completed")
     logger.info(f"  Total rows: {result.total_rows}")
     logger.info(f"  Successful: {result.successful_merges}")
     logger.info(f"  Failed: {len(result.failed_rows)}")

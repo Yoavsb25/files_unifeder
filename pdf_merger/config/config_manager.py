@@ -22,13 +22,13 @@ from .config_schema import ConfigSchema
 logger = get_logger("config_manager")
 DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN # type: ignore
 # Environment variable names
-ENV_INPUT_FILE = 'PDF_MERGER_INPUT_FILE'
-ENV_SOURCE_DIR = 'PDF_MERGER_SOURCE_DIR'
-ENV_OUTPUT_DIR = 'PDF_MERGER_OUTPUT_DIR'
-ENV_COLUMN = 'PDF_MERGER_COLUMN'
+ENV_INPUT_FILE = "PDF_MERGER_INPUT_FILE"
+ENV_SOURCE_DIR = "PDF_MERGER_SOURCE_DIR"
+ENV_OUTPUT_DIR = "PDF_MERGER_OUTPUT_DIR"
+ENV_COLUMN = "PDF_MERGER_COLUMN"
 
 # Per-project preset filename
-PROJECT_PRESET_FILENAME = '.pdf_merger_config.json'
+PROJECT_PRESET_FILENAME = ".pdf_merger_config.json"
 
 
 @dataclass
@@ -53,14 +53,14 @@ class AppConfig:
     def from_dict(cls, data: dict) -> 'AppConfig':
         """Create config from dictionary."""
         return cls(
-            input_file=data.get('input_file'),
-            pdf_dir=data.get('pdf_dir'),
-            output_dir=data.get('output_dir'),
-            required_column=data.get('required_column', DEFAULT_SERIAL_NUMBERS_COLUMN),
-            metrics_enabled=data.get('metrics_enabled', True),
-            telemetry_enabled=data.get('telemetry_enabled', False),
-            crash_reporting_enabled=data.get('crash_reporting_enabled', False),
-            fail_on_ambiguous_matches=data.get('fail_on_ambiguous_matches', True)
+            input_file=data.get("input_file"),
+            pdf_dir=data.get("pdf_dir"),
+            output_dir=data.get("output_dir"),
+            required_column=data.get("required_column", DEFAULT_SERIAL_NUMBERS_COLUMN),
+            metrics_enabled=data.get("metrics_enabled", True),
+            telemetry_enabled=data.get("telemetry_enabled", False),
+            crash_reporting_enabled=data.get("crash_reporting_enabled", False),
+            fail_on_ambiguous_matches=data.get("fail_on_ambiguous_matches", True),
         )
     
     def get_input_file_path(self) -> Optional[Path]:
@@ -96,10 +96,10 @@ class AppConfig:
             pdf_dir=other.pdf_dir if other.pdf_dir else self.pdf_dir,
             output_dir=other.output_dir if other.output_dir else self.output_dir,
             required_column=self._merge_required_column(other),
-            metrics_enabled=other.metrics_enabled if hasattr(other, 'metrics_enabled') else self.metrics_enabled,
-            telemetry_enabled=other.telemetry_enabled if hasattr(other, 'telemetry_enabled') else self.telemetry_enabled,
-            crash_reporting_enabled=other.crash_reporting_enabled if hasattr(other, 'crash_reporting_enabled') else self.crash_reporting_enabled,
-            fail_on_ambiguous_matches=other.fail_on_ambiguous_matches if hasattr(other, 'fail_on_ambiguous_matches') else self.fail_on_ambiguous_matches
+            metrics_enabled=other.metrics_enabled if hasattr(other, "metrics_enabled") else self.metrics_enabled,
+            telemetry_enabled=other.telemetry_enabled if hasattr(other, "telemetry_enabled") else self.telemetry_enabled,
+            crash_reporting_enabled=other.crash_reporting_enabled if hasattr(other, "crash_reporting_enabled") else self.crash_reporting_enabled,
+            fail_on_ambiguous_matches=other.fail_on_ambiguous_matches if hasattr(other, "fail_on_ambiguous_matches") else self.fail_on_ambiguous_matches,
         )
 
 
@@ -112,15 +112,15 @@ def get_config_path() -> Path:
     """
     # Try app directory first (for packaged app)
     app_dir = Path(__file__).parent.parent
-    app_config = app_dir / 'config.json'
+    app_config = app_dir / "config.json"
     if app_config.exists():
         return app_config
     
     # Fall back to user home directory
     home_dir = Path.home()
-    config_dir = home_dir / '.pdf_merger'
+    config_dir = home_dir / ".pdf_merger"
     config_dir.mkdir(exist_ok=True)
-    return config_dir / 'config.json'
+    return config_dir / "config.json"
 
 
 def find_project_preset(start_path: Optional[Path] = None) -> Optional[Path]:
@@ -164,7 +164,7 @@ def load_project_preset(start_path: Optional[Path] = None) -> Optional[AppConfig
         return None
     
     try:
-        with open(preset_path, 'r', encoding='utf-8') as f:
+        with open(preset_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         config = AppConfig.from_dict(data)
         logger.info(f"Loaded project preset from {preset_path}")
@@ -188,7 +188,7 @@ def load_user_config() -> AppConfig:
         return AppConfig()
     
     try:
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         # Validate config
         validated_data = ConfigSchema.validate_config(data)
@@ -210,16 +210,16 @@ def load_env_config() -> AppConfig:
     config_data = {}
     
     if ENV_INPUT_FILE in os.environ:
-        config_data['input_file'] = os.environ[ENV_INPUT_FILE]
-    
+        config_data["input_file"] = os.environ[ENV_INPUT_FILE]
+
     if ENV_SOURCE_DIR in os.environ:
-        config_data['pdf_dir'] = os.environ[ENV_SOURCE_DIR]
-    
+        config_data["pdf_dir"] = os.environ[ENV_SOURCE_DIR]
+
     if ENV_OUTPUT_DIR in os.environ:
-        config_data['output_dir'] = os.environ[ENV_OUTPUT_DIR]
-    
+        config_data["output_dir"] = os.environ[ENV_OUTPUT_DIR]
+
     if ENV_COLUMN in os.environ:
-        config_data['required_column'] = os.environ[ENV_COLUMN]
+        config_data["required_column"] = os.environ[ENV_COLUMN]
     
     if config_data:
         logger.debug("Loaded configuration from environment variables")
@@ -283,7 +283,7 @@ def save_config(config: AppConfig) -> bool:
         # Ensure parent directory exists
         config_path.parent.mkdir(parents=True, exist_ok=True)
         
-        with open(config_path, 'w', encoding='utf-8') as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config.to_dict(), f, indent=2, ensure_ascii=False)
         
         logger.info(f"Saved config to {config_path}")
