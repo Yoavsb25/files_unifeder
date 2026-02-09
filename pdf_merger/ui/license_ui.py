@@ -39,15 +39,15 @@ def match_color_to_display_text(
         Formatted display text for the license status
     """
     if color == GREEN_COLOR or color == LicenseColor.GREEN.value:
-        return f"✓ Licensed to: {company_name} (Expires: {expires})"
+        return f"✓ Licensed · Expires {expires}"
     
     if color == ORANGE_COLOR or color == LicenseColor.ORANGE.value:
         return EXPIRED_LICENSE
     
     if color == YELLOW_COLOR or color == LicenseColor.YELLOW.value:
         if warning_msg:
-            return f"✓ Licensed to: {company_name} - {warning_msg}"
-        return f"✓ Licensed to: {company_name} (Expires: {expires})"
+            return f"✓ Licensed · {company_name} · {warning_msg}"
+        return f"✓ Licensed · Expires {expires}"
     
     if color == RED_COLOR or color == LicenseColor.RED.value:
         # RED can represent critical warnings OR errors

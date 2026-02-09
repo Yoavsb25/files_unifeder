@@ -44,32 +44,36 @@ class FileSelector(ctk.CTkFrame):
         
         self.on_select = on_select
         
-        # Label
+        # Label (section header - larger, high contrast)
         ctk.CTkLabel(
             self,
             text=label_text,
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(size=14, weight="bold")
         ).pack(anchor="w", pady=(0, 5))
         
         # Button frame
         button_frame = ctk.CTkFrame(self)
         button_frame.pack(fill="x")
         
-        # File/directory label
+        # File/directory label (muted so labels stand out)
         self.path_label = ctk.CTkLabel(
             button_frame,
             text="No selection",
             anchor="w",
-            font=ctk.CTkFont(size=11)
+            font=ctk.CTkFont(size=11),
+            text_color=("gray45", "gray55")
         )
         self.path_label.pack(side="left", fill="x", expand=True, padx=(0, 10))
         
-        # Browse button
+        # Browse button (secondary / outline so Run Merge reads as primary)
         self.browse_button = ctk.CTkButton(
             button_frame,
             text=button_text,
             command=self._on_browse_clicked,
-            width=100
+            width=100,
+            fg_color="transparent",
+            border_width=1,
+            border_color=("#3B8ED0", "#1F6AA5")
         )
         self.browse_button.pack(side="right")
     
@@ -88,17 +92,17 @@ class FileSelector(ctk.CTkFrame):
 
 
 class LicenseFrame(ctk.CTkFrame):
-    """License status display frame."""
+    """License status display frame (pill/badge style)."""
     
     def __init__(self, parent):
-        super().__init__(parent)
+        super().__init__(parent, fg_color=("gray90", "gray20"), corner_radius=20)
         
         self.license_label = ctk.CTkLabel(
             self,
             text="Checking license...",
             font=ctk.CTkFont(size=12)
         )
-        self.license_label.pack(pady=10)
+        self.license_label.pack(padx=16, pady=8)
     
     def update_status(self, text: str, color: Union[str, StatusColor] = StatusColor.WHITE):
         """Update license status display.
@@ -117,11 +121,11 @@ class LogArea(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         
-        # Label
+        # Label (section header - consistent with other sections)
         ctk.CTkLabel(
             self,
             text="Output Log:",
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(size=14, weight="bold")
         ).pack(anchor="w", padx=10, pady=(10, 5))
         
         # Text widget

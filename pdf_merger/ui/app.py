@@ -76,6 +76,8 @@ class PDFMergerApp(ctk.CTk):
     
     def _build_ui(self):
         """Build the user interface."""
+        SECTION_PADY = 16
+
         # Main container
         main_frame = ctk.CTkFrame(self)
         main_frame.pack(fill="both", expand=True, padx=20, pady=20)
@@ -94,7 +96,7 @@ class PDFMergerApp(ctk.CTk):
         
         # File selection frame
         file_frame = ctk.CTkFrame(main_frame)
-        file_frame.pack(fill="x", pady=(0, 10))
+        file_frame.pack(fill="x", pady=(0, SECTION_PADY + 2))
         
         # Input file selector
         self.input_file_selector = FileSelector(
@@ -102,7 +104,7 @@ class PDFMergerApp(ctk.CTk):
             label_text="CSV/Excel File:",
             on_select=self._select_input_file
         )
-        self.input_file_selector.pack(fill="x", padx=10, pady=10)
+        self.input_file_selector.pack(fill="x", padx=10, pady=(12, 14))
         
         # PDF directory selector
         self.pdf_dir_selector = FileSelector(
@@ -110,7 +112,7 @@ class PDFMergerApp(ctk.CTk):
             label_text="Source Directory:",
             on_select=self._select_pdf_directory
         )
-        self.pdf_dir_selector.pack(fill="x", padx=10, pady=10)
+        self.pdf_dir_selector.pack(fill="x", padx=10, pady=(12, 14))
         
         # Output directory selector
         self.output_dir_selector = FileSelector(
@@ -118,7 +120,7 @@ class PDFMergerApp(ctk.CTk):
             label_text="Output Directory:",
             on_select=self._select_output_directory
         )
-        self.output_dir_selector.pack(fill="x", padx=10, pady=10)
+        self.output_dir_selector.pack(fill="x", padx=10, pady=(12, 14))
         
         # Run button
         self.run_button = ctk.CTkButton(
@@ -128,11 +130,11 @@ class PDFMergerApp(ctk.CTk):
             font=ctk.CTkFont(size=14, weight="bold"),
             height=40
         )
-        self.run_button.pack(fill="x", pady=(10, 10))
+        self.run_button.pack(fill="x", pady=(SECTION_PADY + 2, SECTION_PADY + 2))
         
         # Log/output area
         self.log_area = LogArea(main_frame)
-        self.log_area.pack(fill="both", expand=True, pady=(0, 10))
+        self.log_area.pack(fill="both", expand=True, pady=(0, SECTION_PADY))
         
         # Footer
         self.footer = Footer(main_frame)
@@ -195,7 +197,14 @@ class PDFMergerApp(ctk.CTk):
             not self.merge_handler.is_processing
         )
         
-        self.run_button.configure(state="normal" if can_run else "disabled")
+        if can_run:
+            self.run_button.configure(
+                state="normal",
+                fg_color=("#3B8ED0", "#1F6AA5"),
+                border_width=0
+            )
+        else:
+            self.run_button.configure(state="disabled")
     
     
     def _select_input_file(self):

@@ -375,7 +375,11 @@ class TestPDFMergerApp:
         
         app._update_ui_state()
         
-        app.run_button.configure.assert_called_once_with(state="normal")
+        app.run_button.configure.assert_called_once_with(
+            state="normal",
+            fg_color=("#3B8ED0", "#1F6AA5"),
+            border_width=0
+        )
     
     def test_update_ui_state_missing_paths(self):
         """Test updating UI state when paths are missing."""
