@@ -35,10 +35,11 @@ class TestRunMerge:
             file_path=input_file,
             source_folder=pdf_dir,
             output_folder=output_dir,
-            required_column='serial_numbers'
+            required_column="serial_numbers",
+            fail_on_ambiguous=True,
         )
         assert mock_logger.info.called
-    
+
     @patch('pdf_merger.core.merge_orchestrator.process_file')
     @patch('pdf_merger.core.merge_orchestrator.logger')
     def test_run_merge_with_custom_column(self, mock_logger, mock_process_file, tmp_path):
@@ -61,9 +62,10 @@ class TestRunMerge:
             file_path=input_file,
             source_folder=pdf_dir,
             output_folder=output_dir,
-            required_column="custom_column"
+            required_column="custom_column",
+            fail_on_ambiguous=True,
         )
-    
+
     @patch('pdf_merger.core.merge_orchestrator.process_file')
     @patch('pdf_merger.core.merge_orchestrator.logger')
     def test_run_merge_exception(self, mock_logger, mock_process_file, tmp_path):

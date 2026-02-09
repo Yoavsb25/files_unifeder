@@ -9,8 +9,8 @@ from typing import Optional, Callable
 
 from ..utils.validators import validate_file, validate_folder
 from ..utils.exceptions import PDFMergerError
-from ..core import run_merge, format_result_summary
-from ..core.merge_processor import ProcessingResult
+from ..core import run_merge_job, format_result_summary
+from ..models import MergeResult
 from ..utils.logging_utils import get_logger
 
 logger = get_logger("ui.handlers")
@@ -81,56 +81,65 @@ class FileSelectionHandler:
 
 
 class MergeHandler:
-    """Handler for merge operations."""
-    
+    """Handler for merge operations. Uses run_merge_job (single entry point) and forwards config."""
+
     def __init__(
         self,
         on_start: Optional[Callable[[], None]] = None,
-        on_complete: Optional[Callable[[ProcessingResult], None]] = None,
-        on_error: Optional[Callable[[str], None]] = None
+        on_complete: Optional[Callable[[MergeResult], None]] = None,
+        on_error: Optional[Callable[[str], None]] = None,
     ):
         self.on_start = on_start
         self.on_complete = on_complete
         self.on_error = on_error
         self.is_processing = False
-    
+
     def run_merge(
         self,
         input_file: Path,
         pdf_dir: Path,
-        output_dir: Path
+        output_dir: Path,
+        required_column: str = "serial_numbers",
+        fail_on_ambiguous_matches: bool = True,
     ):
-        """Run the merge operation in a separate thread."""
+        """Run the merge operation in a separate thread. Config (column, ambiguous behavior) is forwarded."""
         if self.is_processing:
             return
-        
+
         if not all([input_file, pdf_dir, output_dir]):
             if self.on_error:
                 self.on_error("Please select all required files and directories.")
             return
-        
+
         self.is_processing = True
-        
+
         if self.on_start:
             self.on_start()
-        
-        # Run in separate thread
+
         thread = threading.Thread(
             target=self._merge_worker,
-            args=(input_file, pdf_dir, output_dir),
-            daemon=True
+            args=(input_file, pdf_dir, output_dir, required_column, fail_on_ambiguous_matches),
+            daemon=True,
         )
         thread.start()
-    
-    def _merge_worker(self, input_file: Path, pdf_dir: Path, output_dir: Path):
-        """Worker thread for merge operation."""
+
+    def _merge_worker(
+        self,
+        input_file: Path,
+        pdf_dir: Path,
+        output_dir: Path,
+        required_column: str,
+        fail_on_ambiguous_matches: bool,
+    ):
+        """Worker thread: run_merge_job (single entry point) then adapt result for UI."""
         try:
-            result = run_merge(
+            result = run_merge_job(
                 input_file=input_file,
                 pdf_dir=pdf_dir,
-                output_dir=output_dir
+                output_dir=output_dir,
+                required_column=required_column,
+                fail_on_ambiguous=fail_on_ambiguous_matches,
             )
-            
             if self.on_complete:
                 self.on_complete(result)
         except Exception as e:
@@ -139,9 +148,8 @@ class MergeHandler:
             if self.on_error:
                 self.on_error(error_msg)
         finally:
-            # Reset processing state - callbacks will handle UI updates
             self.is_processing = False
-    
-    def format_result(self, result: ProcessingResult) -> str:
-        """Format merge result as a summary string."""
+
+    def format_result(self, result: MergeResult) -> str:
+        """Format merge result as a summary string (MergeResult is the single source of truth)."""
         return format_result_summary(result)

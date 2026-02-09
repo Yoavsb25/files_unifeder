@@ -13,14 +13,20 @@ class TestSetupLogger:
     """Test cases for setup_logger function."""
     
     def test_setup_logger_defaults(self):
-        """Test creating a logger with default parameters."""
-        logger = setup_logger()
+        """Test creating a logger with default parameters (stream handler; file handler if writable)."""
+        # Use a unique name so we get a fresh logger not shared with other tests
+        logger = setup_logger(name="test_defaults_logger")
         
-        assert logger.name == "pdf_merger"
+        assert logger.name == "test_defaults_logger"
         assert logger.level == logging.INFO
-        assert len(logger.handlers) == 1
-        assert isinstance(logger.handlers[0], logging.StreamHandler)
-        assert logger.handlers[0].stream == sys.stdout
+        # setup_logger adds at least console handler; file handler added when log dir is writable
+        assert len(logger.handlers) >= 1
+        # Console handler is StreamHandler to stdout (FileHandler is also a StreamHandler subclass)
+        console_handlers = [h for h in logger.handlers if isinstance(h, logging.StreamHandler) and h.stream == sys.stdout]
+        assert len(console_handlers) == 1
+        file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+        if file_handlers:
+            assert "pdf_merger.log" in str(file_handlers[0].baseFilename)
     
     def test_setup_logger_custom_name(self):
         """Test creating a logger with custom name."""
@@ -39,8 +45,11 @@ class TestSetupLogger:
     
     def test_setup_logger_formatter(self):
         """Test that logger has correct formatter."""
-        logger = setup_logger()
-        handler = logger.handlers[0]
+        logger = setup_logger(name="test_formatter_logger")
+        # Console handler is StreamHandler to stdout (FileHandler is also a StreamHandler subclass)
+        console_handlers = [h for h in logger.handlers if isinstance(h, logging.StreamHandler) and h.stream == sys.stdout]
+        assert len(console_handlers) == 1
+        handler = console_handlers[0]
         
         assert handler.formatter is not None
         assert isinstance(handler.formatter, logging.Formatter)

@@ -10,7 +10,7 @@ import customtkinter as ctk
 from .. import APP_VERSION
 from ..licensing import LicenseManager
 from ..utils.logging_utils import get_logger, setup_logger
-from ..core.merge_processor import ProcessingResult
+from ..models import MergeResult
 from ..config.config_manager import load_config
 from .components import FileSelector, LicenseFrame, LogArea, Footer
 from .license_ui import update_license_display
@@ -255,7 +255,9 @@ class PDFMergerApp(ctk.CTk):
         self.merge_handler.run_merge(
             input_file=self.input_file_path,
             pdf_dir=self.pdf_dir_path,
-            output_dir=self.output_dir_path
+            output_dir=self.output_dir_path,
+            required_column=self.config.required_column,
+            fail_on_ambiguous_matches=self.config.fail_on_ambiguous_matches,
         )
     
     def _on_merge_start(self):
@@ -271,7 +273,7 @@ class PDFMergerApp(ctk.CTk):
         self._log(f"Output directory: {self.output_dir_path}")
         self._log("")
     
-    def _on_merge_complete(self, result: ProcessingResult):
+    def _on_merge_complete(self, result: MergeResult):
         """Handle merge completion."""
         # Reset processing state
         self.merge_handler.is_processing = False

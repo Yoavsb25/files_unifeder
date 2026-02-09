@@ -90,7 +90,7 @@ from pdf_merger.ui.app import PDFMergerApp, run_gui
 from pdf_merger.ui.components import LogHandler
 from pdf_merger.core.enums import StatusColor
 from pdf_merger.licensing import LicenseStatus
-from pdf_merger.core.merge_processor import ProcessingResult
+from pdf_merger.models import MergeResult
 
 
 class TestPDFMergerApp:
@@ -275,13 +275,15 @@ class TestPDFMergerApp:
         app.output_dir_path = tmp_path / "output"
         
         app._run_merge()
-        
+
         app.merge_handler.run_merge.assert_called_once_with(
             input_file=app.input_file_path,
             pdf_dir=app.pdf_dir_path,
-            output_dir=app.output_dir_path
+            output_dir=app.output_dir_path,
+            required_column=app.config.required_column,
+            fail_on_ambiguous_matches=app.config.fail_on_ambiguous_matches,
         )
-    
+
     def test_run_merge_invalid_license(self):
         """Test running merge with invalid license."""
         app = self._create_mock_app()
@@ -330,21 +332,17 @@ class TestPDFMergerApp:
         assert app._log.call_count >= 4  # Multiple log calls
     
     def test_on_merge_complete_success(self):
-        """Test merge completion handler with full success."""
+        """Test merge completion handler with full success (MergeResult)."""
         app = self._create_mock_app()
         app.merge_handler.is_processing = True
         app.merge_handler.format_result = MagicMock(return_value="Summary text")
         app._log = MagicMock()
         app._update_ui_state = MagicMock()
-        
-        result = ProcessingResult(
-            total_rows=5,
-            successful_merges=5,
-            failed_rows=[]
-        )
-        
+
+        result = MergeResult(total_rows=5, successful_merges=5, failed_rows=[])
+
         app._on_merge_complete(result)
-        
+
         assert app.merge_handler.is_processing is False
         app.run_button.configure.assert_called_with(state="normal", text="Run Merge")
         app.footer.update_status.assert_called_with("Success", StatusColor.GREEN)
@@ -569,40 +567,40 @@ class TestPDFMergerApp:
         assert app.license_valid is False
     
     def test_on_merge_complete_partial_success(self):
-        """Test merge completion with partial success."""
+        """Test merge completion with partial success (MergeResult)."""
         app = self._create_mock_app()
         app.merge_handler.is_processing = True
         app.merge_handler.format_result = MagicMock(return_value="Summary text")
         app._log = MagicMock()
         app._update_ui_state = MagicMock()
-        
-        result = ProcessingResult(
+
+        result = MergeResult(
             total_rows=5,
             successful_merges=3,
-            failed_rows=[2, 4]
+            failed_rows=[2, 4],
         )
-        
+
         app._on_merge_complete(result)
-        
+
         assert app.merge_handler.is_processing is False
         app.footer.update_status.assert_called_with("Partial success", StatusColor.ORANGE)
-    
+
     def test_on_merge_complete_failed(self):
-        """Test merge completion with all failures."""
+        """Test merge completion with all failures (MergeResult)."""
         app = self._create_mock_app()
         app.merge_handler.is_processing = True
         app.merge_handler.format_result = MagicMock(return_value="Summary text")
         app._log = MagicMock()
         app._update_ui_state = MagicMock()
-        
-        result = ProcessingResult(
+
+        result = MergeResult(
             total_rows=5,
             successful_merges=0,
-            failed_rows=[1, 2, 3, 4, 5]
+            failed_rows=[1, 2, 3, 4, 5],
         )
-        
+
         app._on_merge_complete(result)
-        
+
         assert app.merge_handler.is_processing is False
         app.footer.update_status.assert_called_with("Failed", StatusColor.RED)
 

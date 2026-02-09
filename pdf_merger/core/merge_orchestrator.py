@@ -22,41 +22,44 @@ def run_merge(
     input_file: Path,
     pdf_dir: Path,
     output_dir: Path,
-    required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN
+    required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
+    fail_on_ambiguous: bool = True,
 ) -> ProcessingResult:
     """
     Run the merge operation (legacy interface).
-    
+
     Note: This function is kept for backward compatibility.
     New code should use run_merge_job() with domain models.
-    
+
     Args:
         input_file: Path to CSV or Excel file
         pdf_dir: Path to folder containing PDF and Excel files
         output_dir: Path to output folder
         required_column: Name of the column containing serial numbers
-        
+        fail_on_ambiguous: If True, raise on ambiguous file matches (default: True)
+
     Returns:
         ProcessingResult with statistics
     """
-    logger.info(f"Starting merge operation")
+    logger.info("Starting merge operation")
     logger.info(f"  Input file: {input_file}")
     logger.info(f"  Source directory: {pdf_dir}")
     logger.info(f"  Output directory: {output_dir}")
-    
+
     try:
         result = process_file(
             file_path=input_file,
             source_folder=pdf_dir,
             output_folder=output_dir,
-            required_column=required_column
+            required_column=required_column,
+            fail_on_ambiguous=fail_on_ambiguous,
         )
-        
-        logger.info(f"Merge operation completed")
+
+        logger.info("Merge operation completed")
         logger.info(f"  Total rows: {result.total_rows}")
         logger.info(f"  Successful: {result.successful_merges}")
         logger.info(f"  Failed: {len(result.failed_rows)}")
-        
+
         return result
     except Exception as e:
         logger.error(f"Error during merge operation: {e}")
