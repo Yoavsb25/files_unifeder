@@ -682,6 +682,20 @@ Import from the package root: `from pdf_merger import run_merge_job, load_config
 - **Tests**: UI unit tests live under `tests/unit/ui/`. Tkinter and CustomTkinter are mocked in `conftest.py` so no display is required. Component tests are in `test_components.py`.
 - **Legacy APIs**: `run_merge`, `process_file`, and `ProcessingResult` are kept for backward compatibility. New code should use `run_merge_job`, `process_job`/`process_row_with_models`, and `MergeResult`.
 
+### Quality bar (Target 9/10)
+
+The codebase aims for a **9/10** engineering standard. The following checklist is the quality bar:
+
+1. **Dependency direction**: Domain (`pdf_merger.models`) has zero imports from `core` or `operations`; core and UI depend on domain and operations only.
+2. **Config schema**: Every `AppConfig` field is validated and documented in one schema; invalid values are rejected or normalized with clear rules.
+3. **Single job loading**: One implementation of "load file → MergeJob with rows" (`load_job_from_file`); used by both `run_merge_job` and `process_file`.
+4. **No built-in shadowing**: Custom exceptions are namespaced (e.g. `PDFMergerFileNotFoundError`); no shadowing of built-in exception names.
+5. **Merge state**: Single source of truth for "merge in progress" inside `MergeHandler`; UI only reads state; transitions (idle → running → idle) are explicit and hard to misuse.
+6. **Legacy API**: Legacy entry points (`run_merge`, `process_file`, `ProcessingResult`) are deprecated with a documented timeline (e.g. remove in 2.0).
+7. **Long methods**: `process_job` and `_on_merge_complete` are decomposed into named helpers; key behavior is testable (e.g. `_apply_merge_result_to_ui`, `_process_single_row_and_report`).
+
+See `docs/IMPROVEMENT_ROADMAP.md` for the full improvement plan and phased execution.
+
 ---
 
 ## Technical Details

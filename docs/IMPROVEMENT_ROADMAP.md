@@ -4,6 +4,8 @@ This roadmap is derived from the [Codebase Engineering Audit](.cursor/plans/code
 
 **Prioritization axes:** long-term maintainability → risk reduction → scalability → developer experience.
 
+**Implementation status:** Phase 1 (Quick Wins), Phase 2 (Dependency and API Clarity), Phase 3 (Structure and Testability), and Phase 4 (Polish and 9/10 Checklist) are **done**.
+
 ---
 
 ## Part 1: Category-Level Targets and Actions
@@ -26,11 +28,11 @@ This roadmap is derived from the [Codebase Engineering Audit](.cursor/plans/code
 
 | Tier | Action | Example / Detail |
 |------|--------|------------------|
-| **Quick win** | Extend `ConfigSchema.validate_config()` to include `metrics_enabled`, `telemetry_enabled`, `crash_reporting_enabled`, `fail_on_ambiguous_matches`. Validate as booleans; log and coerce invalid values to defaults. | In `config_schema.py`, add keys to `validate_config()` and call from `load_user_config` / `load_env_config`; ensure `AppConfig.from_dict` uses validated dict only. |
-| **Quick win** | Document single-job concurrency in ARCHITECTURE.md: “Merge runs one job at a time; no cancel or queue. Future: add cancel token or job queue here.” | Add a short “Concurrency” subsection under Technical Details. |
-| **Medium** | Introduce `pdf_merger/models/defaults.py` with `DEFAULT_SERIAL_NUMBERS_COLUMN` and `PERCENTAGE_MULTIPLIER`. `MergeJob.create()` and `MergeResult.get_success_rate()` use these; remove `from ..core.constants` from models. | `defaults.py`: `DEFAULT_SERIAL_NUMBERS_COLUMN = 'serial_numbers'`, `PERCENTAGE_MULTIPLIER = 100.0`. Core `Constants` re-exports from here or keeps its own for non-model callers. |
-| **Medium** | Move serial-number parsing out of core for Row: add `pdf_merger/utils/serial_number_parser.py` (or `parsing/serial_numbers.py`) with `split_serial_numbers`, `deduplicate_serial_numbers`, `normalize_serial_number`. `Row.from_raw_data` and validators import from utils/parsing; core’s `serial_number_parser` becomes a thin wrapper or is deprecated. | Keep the same function signatures; only change import locations so `Row` and validators do not depend on `core`. |
-| **Deep** | Optional: introduce a small `JobLoader` (e.g. in `core/job_loader.py`) that takes `(input_file, required_column)` and returns `MergeJob` (with rows loaded). Orchestrator and `process_file` both call it. This removes duplicate row-loading and centralizes file-read errors. | `load_job_from_file(path, required_column, on_progress=None) -> MergeJob`; raise or return empty job on read error; used by `run_merge_job` and `process_file`. |
+| **Quick win** **[Done]** | Extend `ConfigSchema.validate_config()` to include `metrics_enabled`, `telemetry_enabled`, `crash_reporting_enabled`, `fail_on_ambiguous_matches`. Validate as booleans; log and coerce invalid values to defaults. | In `config_schema.py`, add keys to `validate_config()` and call from `load_user_config` / `load_env_config`; ensure `AppConfig.from_dict` uses validated dict only. |
+| **Quick win** **[Done]** | Document single-job concurrency in ARCHITECTURE.md: “Merge runs one job at a time; no cancel or queue. Future: add cancel token or job queue here.” | Add a short “Concurrency” subsection under Technical Details. |
+| **Medium** **[Done]** | Introduce `pdf_merger/models/defaults.py` with `DEFAULT_SERIAL_NUMBERS_COLUMN` and `PERCENTAGE_MULTIPLIER`. `MergeJob.create()` and `MergeResult.get_success_rate()` use these; remove `from ..core.constants` from models. | `defaults.py`: `DEFAULT_SERIAL_NUMBERS_COLUMN = 'serial_numbers'`, `PERCENTAGE_MULTIPLIER = 100.0`. Core `Constants` re-exports from here or keeps its own for non-model callers. |
+| **Medium** **[Done]** | Move serial-number parsing out of core for Row: add `pdf_merger/utils/serial_number_parser.py` (or `parsing/serial_numbers.py`) with `split_serial_numbers`, `deduplicate_serial_numbers`, `normalize_serial_number`. `Row.from_raw_data` and validators import from utils/parsing; core’s `serial_number_parser` becomes a thin wrapper or is deprecated. | Keep the same function signatures; only change import locations so `Row` and validators do not depend on `core`. |
+| **Deep** **[Done]** | Optional: introduce a small `JobLoader` (e.g. in `core/job_loader.py`) that takes `(input_file, required_column)` and returns `MergeJob` (with rows loaded). Orchestrator and `process_file` both call it. This removes duplicate row-loading and centralizes file-read errors. | `load_job_from_file(path, required_column, on_progress=None) -> MergeJob`; raise or return empty job on read error; used by `run_merge_job` and `process_file`. |
 
 ---
 
@@ -54,9 +56,9 @@ This roadmap is derived from the [Codebase Engineering Audit](.cursor/plans/code
 
 | Tier | Action | Example / Detail |
 |------|--------|------------------|
-| **Quick win** | Replace `ConfigSchema` with module-level functions. Add `validate_config(data) -> dict`, `validate_input_file(value)`, etc. in `config_schema.py`; call them from config_manager. Remove the class. | `def validate_config(data: Dict[str, Any]) -> Dict[str, Any]:` with same logic; config_manager imports `from .config_schema import validate_config`. |
-| **Quick win** | Encapsulate merge state in `MergeHandler`: private `_state: Literal["idle", "running"]` and `_job_id: Optional[str]`. Public property `is_processing` only reads; `run_merge` sets state to running at start and back to idle in a single `finally` (and in completion/error callbacks if needed). | Ensure only one place writes “idle” (e.g. a single `_set_idle()` called from worker’s finally and from completion/error). |
-| **Medium** | Formalize “preferred API” and deprecate legacy: (1) In `run_merge` and `process_file` docstrings, add “Deprecated. Use run_merge_job / process_job and as_processing_result if you need ProcessingResult. Will be removed in 2.0.” (2) In ARCHITECTURE.md Public API section, state “Primary: run_merge_job, process_job, MergeResult. Legacy: run_merge, process_file, ProcessingResult (deprecated).” (3) Add a short DEPRECATION.md or section in README with timeline. | No behavior change; only docs and deprecation notices. Optionally `warnings.warn(..., DeprecationWarning)` in `run_merge` / `process_file`. |
+| **Quick win** **[Done]** | Replace `ConfigSchema` with module-level functions. Add `validate_config(data) -> dict`, `validate_input_file(value)`, etc. in `config_schema.py`; call them from config_manager. Remove the class. | `def validate_config(data: Dict[str, Any]) -> Dict[str, Any]:` with same logic; config_manager imports `from .config_schema import validate_config`. |
+| **Quick win** **[Done]** | Encapsulate merge state in `MergeHandler`: private `_state: Literal["idle", "running"]` and `_job_id: Optional[str]`. Public property `is_processing` only reads; `run_merge` sets state to running at start and back to idle in a single `finally` (and in completion/error callbacks if needed). | Ensure only one place writes “idle” (e.g. a single `_set_idle()` called from worker’s finally and from completion/error). |
+| **Medium** **[Done]** | Formalize “preferred API” and deprecate legacy: (1) In `run_merge` and `process_file` docstrings, add “Deprecated. Use run_merge_job / process_job and as_processing_result if you need ProcessingResult. Will be removed in 2.0.” (2) In ARCHITECTURE.md Public API section, state “Primary: run_merge_job, process_job, MergeResult. Legacy: run_merge, process_file, ProcessingResult (deprecated).” (3) Add a short DEPRECATION.md or section in README with timeline. | No behavior change; only docs and deprecation notices. Optionally `warnings.warn(..., DeprecationWarning)` in `run_merge` / `process_file`. |
 | **Medium** | Extract “apply result to UI” from `_on_merge_complete`: e.g. `_apply_merge_result_to_ui(self, result: MergeResult)` (updates results frame, log lines, counts) and `_reset_merge_ui_state()` (button, progress bar). `_on_merge_complete` becomes: set handler idle, stop progress, call `_apply_merge_result_to_ui`, `_reset_merge_ui_state`, `_update_ui_state`. | Enables unit tests of “given MergeResult, what log lines and frame values are set” without running the full app. |
 | **Deep** | Introduce an optional PDF backend protocol: e.g. `Protocol merge(paths: List[Path], output: Path) -> bool`. Default implementation in `operations/pdf_merger.py` uses current lazy-loaded pypdf. Processor/row_pipeline accept an optional `pdf_backend` argument (default None = use default). Tests can inject a mock. | Keep existing API; add optional parameter to the layer that calls `merge_pdfs` (e.g. row_pipeline or a small service used by it). |
 
@@ -80,34 +82,34 @@ This roadmap is derived from the [Codebase Engineering Audit](.cursor/plans/code
 
 | Tier | Action | Example / Detail |
 |------|--------|------------------|
-| **Quick win** | Rename `utils.exceptions.FileNotFoundError` to `PDFMergerFileNotFoundError`. Update all raises and except clauses (and tests). Re-export in `utils/__init__.py` and keep `PDFMergerError` as base. | `class PDFMergerFileNotFoundError(PDFMergerError):`; grep for `FileNotFoundError` in repo and update to new name. |
-| **Quick win** | Add UI/progress constants: e.g. in `ui/constants.py` or `theme.py`: `WINDOW_SIZE_DEFAULT = "1020x800"`, `WINDOW_MIN_SIZE = (620, 500)`; progress keywords `PROGRESS_KEYWORD_SUCCESS = "Success"`, etc. Use these in `app.py` and in `_on_merge_progress` keyword list. | Reduces magic strings and makes tuning and i18n easier. |
-| **Medium** | Extract “load rows from file into MergeJob” into one function: `load_job_from_file(input_file, source_folder, output_folder, required_column, job_id=None, on_progress=None) -> MergeJob`. Use in both `run_merge_job` and `process_file`; on read error return empty job or raise (and let orchestrator/process_file translate to empty result). | Implement in orchestrator or `core/job_loader.py`; both call sites pass through so file-read and progress behavior are identical. |
-| **Medium** | Split `process_job`: extract `_record_job_failure` (already exists), and e.g. `_process_single_row_and_report(job, row, result, metrics, on_progress, fail_on_ambiguous)` that returns the `RowResult` and optionally calls `on_progress`. Loop in `process_job` becomes: for each row, call progress start, call `_process_single_row_and_report`, add result, call progress end. | Shorter `process_job` body; row-level logic testable via `_process_single_row_and_report` with mocks. |
-| **Low** | Add one-line docstrings to internal helpers that encode non-obvious behavior: e.g. row_pipeline `_convert_excel_files_to_pdfs` (“Returns (pdf_paths, temp_pdf_files) for caller to cleanup.”), `_cleanup_temp_files`, and pipeline error mapping in merge_processor (“Maps pipeline error_message to RowStatus and RowResult fields.”). | Focus on “why” and “contract” (inputs/outputs) where not obvious from the name. |
+| **Quick win** **[Done]** | Rename `utils.exceptions.FileNotFoundError` to `PDFMergerFileNotFoundError`. Update all raises and except clauses (and tests). Re-export in `utils/__init__.py` and keep `PDFMergerError` as base. | `class PDFMergerFileNotFoundError(PDFMergerError):`; grep for `FileNotFoundError` in repo and update to new name. |
+| **Quick win** **[Done]** | Add UI/progress constants: e.g. in `ui/constants.py` or `theme.py`: `WINDOW_SIZE_DEFAULT = "1020x800"`, `WINDOW_MIN_SIZE = (620, 500)`; progress keywords `PROGRESS_KEYWORD_SUCCESS = "Success"`, etc. Use these in `app.py` and in `_on_merge_progress` keyword list. | Reduces magic strings and makes tuning and i18n easier. |
+| **Medium** **[Done]** | Extract “load rows from file into MergeJob” into one function: `load_job_from_file(input_file, source_folder, output_folder, required_column, job_id=None, on_progress=None) -> MergeJob`. Use in both `run_merge_job` and `process_file`; on read error return empty job or raise (and let orchestrator/process_file translate to empty result). | Implement in orchestrator or `core/job_loader.py`; both call sites pass through so file-read and progress behavior are identical. |
+| **Medium** **[Done]** | Split `process_job`: extract `_record_job_failure` (already exists), and e.g. `_process_single_row_and_report(job, row, result, metrics, on_progress, fail_on_ambiguous)` that returns the `RowResult` and optionally calls `on_progress`. Loop in `process_job` becomes: for each row, call progress start, call `_process_single_row_and_report`, add result, call progress end. | Shorter `process_job` body; row-level logic testable via `_process_single_row_and_report` with mocks. |
+| **Low** **[Done]** | Add one-line docstrings to internal helpers that encode non-obvious behavior: e.g. row_pipeline `_convert_excel_files_to_pdfs` (“Returns (pdf_paths, temp_pdf_files) for caller to cleanup.”), `_cleanup_temp_files`, and pipeline error mapping in merge_processor (“Maps pipeline error_message to RowStatus and RowResult fields.”). | Focus on “why” and “contract” (inputs/outputs) where not obvious from the name. |
 
 ---
 
 ## Part 2: Effort Tiers (Summary)
 
 - **Quick wins (high impact, low effort)**  
-  - Config schema extended for all AppConfig fields.  
-  - Concurrency documented.  
-  - ConfigSchema replaced by module-level validation functions.  
-  - MergeHandler state encapsulated (single writer for idle/running).  
-  - Rename `FileNotFoundError` → `PDFMergerFileNotFoundError`.  
-  - UI/progress constants for window size and progress keywords.
+  - Config schema extended for all AppConfig fields. **[Done]**  
+  - Concurrency documented. **[Done]**  
+  - ConfigSchema replaced by module-level validation functions. **[Done]**  
+  - MergeHandler state encapsulated (single writer for idle/running). **[Done]**  
+  - Rename `FileNotFoundError` → `PDFMergerFileNotFoundError`. **[Done]**  
+  - UI/progress constants for window size and progress keywords. **[Done]**
 
 - **Medium-complexity**  
-  - Models defaults module; remove core dependency from models.  
-  - Serial number parsing moved to utils/parsing; Row no longer depends on core.  
-  - Deprecation notices and docs for legacy API.  
-  - Extract “apply result to UI” and “reset merge UI” from `_on_merge_complete`.  
-  - Single `load_job_from_file` and use in orchestrator and `process_file`.  
-  - Split `process_job` with a clear “process one row and report” helper.
+  - Models defaults module; remove core dependency from models. **[Done]**  
+  - Serial number parsing moved to utils/parsing; Row no longer depends on core. **[Done]**  
+  - Deprecation notices and docs for legacy API. **[Done]**  
+  - Extract “apply result to UI” and “reset merge UI” from `_on_merge_complete`. **[Done]**  
+  - Single `load_job_from_file` and use in orchestrator and `process_file`. **[Done]**  
+  - Split `process_job` with a clear “process one row and report” helper. **[Done]**
 
 - **Deep structural**  
-  - Optional `JobLoader` abstraction and single place for all job-from-file loading.  
+  - Optional `JobLoader` abstraction and single place for all job-from-file loading. **[Done]**  
   - Optional PDF backend protocol for testing and future backends.
 
 ---
@@ -179,7 +181,7 @@ This roadmap is derived from the [Codebase Engineering Audit](.cursor/plans/code
 
 ---
 
-### Phase 3: Structure and Testability (Target: 2–3 weeks)
+### Phase 3: Structure and Testability (Target: 2–3 weeks) **[Done]**
 
 **Goal:** Shorter, testable methods; optional backend abstraction for PDF and future scalability.
 
@@ -210,7 +212,7 @@ This roadmap is derived from the [Codebase Engineering Audit](.cursor/plans/code
 
 ---
 
-### Phase 4: Polish and 9/10 Checklist (Target: 1 week)
+### Phase 4: Polish and 9/10 Checklist (Target: 1 week) **[Done]**
 
 **Goal:** Close remaining gaps and document the 9/10 standard.
 
@@ -243,17 +245,17 @@ This roadmap is derived from the [Codebase Engineering Audit](.cursor/plans/code
 
 Ordered by: **maintainability → risk → scalability → DX.**
 
-1. **Rename FileNotFoundError** (risk: confusion and wrong catches) — Phase 1.  
-2. **Extend config schema** (maintainability, single source of truth) — Phase 1.  
-3. **Encapsulate MergeHandler state** (risk: stuck “processing” state) — Phase 1.  
-4. **Remove models → core dependency** (maintainability, clean layers) — Phase 2.  
-5. **Single load_job_from_file** (maintainability, DRY) — Phase 2.  
-6. **Replace ConfigSchema with functions** (design clarity) — Phase 1.  
-7. **Deprecate legacy API with timeline** (cognitive load, divergence risk) — Phase 2.  
-8. **Move serial parsing to utils** (architecture) — Phase 2.  
+1. **Rename FileNotFoundError** **[Done]** (risk: confusion and wrong catches) — Phase 1.  
+2. **Extend config schema** **[Done]** (maintainability, single source of truth) — Phase 1.  
+3. **Encapsulate MergeHandler state** **[Done]** (risk: stuck “processing” state) — Phase 1.  
+4. **Remove models → core dependency** **[Done]** (maintainability, clean layers) — Phase 2.  
+5. **Single load_job_from_file** **[Done]** (maintainability, DRY) — Phase 2.  
+6. **Replace ConfigSchema with functions** **[Done]** (design clarity) — Phase 1.  
+7. **Deprecate legacy API with timeline** **[Done]** (cognitive load, divergence risk) — Phase 2.  
+8. **Move serial parsing to utils** **[Done]** (architecture) — Phase 2.  
 9. **Split long methods and extract UI result application** (readability, testability) — Phase 3.  
 10. **Optional PDF backend** (testability, scalability) — Phase 3.  
-11. **Document concurrency and 9/10 bar** (scalability, DX) — Phase 1 + 4.
+11. **Document concurrency and 9/10 bar** **[Done]** (scalability, DX) — Phase 1 + 4.
 
 ---
 
@@ -270,9 +272,9 @@ Ordered by: **maintainability → risk → scalability → DX.**
 
 ## Summary
 
-- **Phase 1:** Quick wins — config schema, concurrency docs, ConfigSchema→functions, MergeHandler state, exception rename, UI constants.  
-- **Phase 2:** Architecture and API — model defaults, no core in models, single job loader, deprecate legacy.  
-- **Phase 3:** Structure — split long methods, extract UI result application, optional PDF backend, docstrings.  
-- **Phase 4:** Polish — 9/10 checklist in ARCHITECTURE.md, final pass on state and constants.
+- **Phase 1 (Done):** Quick wins — config schema, concurrency docs, ConfigSchema→functions, MergeHandler state, exception rename, UI constants.  
+- **Phase 2 (Done):** Architecture and API — model defaults, no core in models, single job loader, deprecate legacy.  
+- **Phase 3 (Done):** Structure — split long methods, extract UI result application, optional PDF backend, docstrings.  
+- **Phase 4 (Done):** Polish — 9/10 checklist in ARCHITECTURE.md, final pass on state and constants.
 
 Completing all four phases with the success criteria above should bring the codebase to a **9/10** standard: clean dependency direction, full config validation, single source of truth for job loading and merge state, no exception shadowing, and clearer, testable structure with a defined path beyond legacy APIs.

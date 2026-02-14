@@ -40,6 +40,11 @@ from .theme import (
     PROGRESS_KEYWORD_SUCCESS,
     PROGRESS_KEYWORD_SKIPPED,
     PROGRESS_KEYWORD_FAILED,
+    RUN_MERGE_BUTTON_TEXT,
+    PROCESSING_BUTTON_TEXT,
+    VIEW_DETAILED_LOG,
+    HIDE_DETAILED_LOG,
+    MESSAGE_PROCESSING_COMPLETE,
 )
 # Setup logging
 setup_logger("pdf_merger", level=20)
@@ -195,7 +200,7 @@ class PDFMergerApp(ctk.CTk):
         """Build Run Merge button and progress bar."""
         self.run_button = ctk.CTkButton(
             main_frame,
-            text="Run Merge",
+            text=RUN_MERGE_BUTTON_TEXT,
             command=self._run_merge,
             font=ctk.CTkFont(size=14, weight="bold"),
             height=54,
@@ -377,7 +382,7 @@ class PDFMergerApp(ctk.CTk):
         """Toggle visibility of the detailed log area (expand/collapse)."""
         self.log_area._toggle()
         self.results_frame.view_log_btn.configure(
-            text="Hide Detailed Log" if self.log_area._expanded else "View Detailed Log"
+            text=HIDE_DETAILED_LOG if self.log_area._expanded else VIEW_DETAILED_LOG
         )
 
     def _select_output_directory(self):
@@ -480,7 +485,7 @@ class PDFMergerApp(ctk.CTk):
     
     def _on_merge_start(self):
         """Handle merge operation start."""
-        self.run_button.configure(state="disabled", text="Processing…")
+        self.run_button.configure(state="disabled", text=PROCESSING_BUTTON_TEXT)
         self.progress_bar.pack(fill="x", pady=(0, SECTION_SPACING), before=self.log_area)
         self.progress_bar.start()
         self.results_frame.hide()
@@ -491,14 +496,16 @@ class PDFMergerApp(ctk.CTk):
         self._log_info(f"Output directory: {self.output_dir_path}")
         self._log("")
     
-    def _on_merge_complete(self, result: MergeResult):
-        """Handle merge completion - accurate Rows Analyzed, PDFs Created, Skipped, Failed."""
-        self.run_button.configure(state="normal", text="Run Merge")
+    def _reset_merge_ui_state(self) -> None:
+        """Reset Run Merge button and hide progress bar after merge completes or errors."""
+        self.run_button.configure(state="normal", text=RUN_MERGE_BUTTON_TEXT)
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
 
+    def _apply_merge_result_to_ui(self, result: MergeResult) -> None:
+        """Update results frame and log area from a MergeResult (enables tests of result-to-UI mapping)."""
         self._log("")
-        self._log_info("Processing Complete")
+        self._log_info(MESSAGE_PROCESSING_COMPLETE)
         self._log_info(f"Rows analyzed: {result.total_rows}")
         self._log_info(f"PDFs created: {result.successful_merges}")
         skipped_count = len(result.skipped_rows)
@@ -518,14 +525,16 @@ class PDFMergerApp(ctk.CTk):
             output_dir=str(self.output_dir_path) if self.output_dir_path else None,
         )
         self.results_frame.show(before=self.log_area)
+
+    def _on_merge_complete(self, result: MergeResult):
+        """Handle merge completion: reset UI state, apply result to UI, then update run button state."""
+        self._reset_merge_ui_state()
+        self._apply_merge_result_to_ui(result)
         self._update_ui_state()
     
     def _on_merge_error(self, error_message: str):
-        """Handle merge error."""
-        self.run_button.configure(state="normal", text="Run Merge")
-        self.progress_bar.stop()
-        self.progress_bar.pack_forget()
-
+        """Handle merge error: reset UI state, log error, then update run button state."""
+        self._reset_merge_ui_state()
         self._log("")
         self._log_error(error_message)
         self._update_ui_state()

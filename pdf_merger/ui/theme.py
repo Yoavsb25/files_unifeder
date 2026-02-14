@@ -55,6 +55,13 @@ PROGRESS_KEYWORD_SUCCESS = "Success"
 PROGRESS_KEYWORD_SKIPPED = "Skipped"
 PROGRESS_KEYWORD_FAILED = "Failed"
 
+# Run Merge button and completion copy (reduces magic strings; aids i18n)
+RUN_MERGE_BUTTON_TEXT = "Run Merge"
+PROCESSING_BUTTON_TEXT = "Processing…"
+VIEW_DETAILED_LOG = "View Detailed Log"
+HIDE_DETAILED_LOG = "Hide Detailed Log"
+MESSAGE_PROCESSING_COMPLETE = "Processing Complete"
+
 # Typography
 FONT_TITLE_SIZE = 28
 FONT_SECTION_SIZE = 18

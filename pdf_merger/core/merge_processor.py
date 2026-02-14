@@ -90,7 +90,7 @@ def _pipeline_result_to_row_result(
     pipeline: RowPipelineResult,
     processing_time: float,
 ) -> RowResult:
-    """Map RowPipelineResult to RowResult (single place for pipeline -> result mapping)."""
+    """Map RowPipelineResult to RowResult. Maps pipeline error_message to RowStatus and RowResult fields."""
     if not pipeline.source_files:
         return RowResult(
             row_index=row_index,
@@ -236,6 +236,37 @@ def _record_job_failure(
     result.add_row_result(RowResult.failed(row_index=row_index, error_message=str(exception)))
 
 
+def _process_single_row_and_report(
+    row: Row,
+    source_folder: Path,
+    output_folder: Path,
+    total_rows: int,
+    fail_on_ambiguous: bool,
+    on_progress: Optional[ProgressCallback],
+    metrics: "MetricsRecorder",
+) -> RowResult:
+    """Process one row, optionally report progress via callback; returns RowResult for caller to add to MergeResult."""
+    row_num = row.row_index + 1
+    if on_progress:
+        serials = ", ".join(row.serial_numbers) if row.serial_numbers else "no serial numbers"
+        on_progress(PROGRESS_PROCESSING, row_num, total_rows, f"Processing Row {row_num}... ({serials})")
+
+    row_result = process_row_with_models(
+        row,
+        source_folder,
+        output_folder,
+        fail_on_ambiguous=fail_on_ambiguous,
+        quiet=on_progress is not None,
+        metrics_collector=metrics,
+    )
+
+    if on_progress:
+        for line in _progress_message_for_row_result(row_num, total_rows, row_result):
+            on_progress(PROGRESS_PROCESSING, row_num, total_rows, line)
+
+    return row_result
+
+
 def process_job(
     job: MergeJob,
     fail_on_ambiguous: bool = True,
@@ -274,31 +305,19 @@ def process_job(
     current_row_index = 0
 
     try:
-        use_progress = on_progress is not None
-        for idx, row in enumerate(job.rows):
+        for row in job.rows:
             current_row_index = row.row_index
-            row_num = row.row_index + 1
-
-            # Single row start message (avoids duplicate with process_row_with_models log)
-            if on_progress:
-                serials = ", ".join(row.serial_numbers) if row.serial_numbers else "no serial numbers"
-                on_progress(PROGRESS_PROCESSING, row_num, total_rows, f"Processing Row {row_num}... ({serials})")
-
-            row_result = process_row_with_models(
+            row_result = _process_single_row_and_report(
                 row,
                 job.source_folder,
                 job.output_folder,
-                fail_on_ambiguous=fail_on_ambiguous,
-                quiet=use_progress,
-                metrics_collector=metrics,
+                total_rows,
+                fail_on_ambiguous,
+                on_progress,
+                metrics,
             )
             result.add_row_result(row_result)
 
-            if on_progress:
-                msg = _progress_message_for_row_result(row_num, total_rows, row_result)
-                for line in msg:
-                    on_progress(PROGRESS_PROCESSING, row_num, total_rows, line)
-        
         result.total_processing_time = time.time() - start_time
         metrics.record_timer("job_processing_time", result.total_processing_time)
         metrics.record_counter("jobs_completed")

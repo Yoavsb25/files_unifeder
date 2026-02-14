@@ -64,7 +64,7 @@ def _convert_excel_files_to_pdfs(
 
 
 def _cleanup_temp_files(temp_pdf_files: List[Path], quiet: bool = False) -> None:
-    """Clean up temporary PDF files."""
+    """Remove temporary PDF files from disk; safe to call with missing or already-removed paths."""
     for temp_pdf in temp_pdf_files:
         try:
             if temp_pdf.exists():
