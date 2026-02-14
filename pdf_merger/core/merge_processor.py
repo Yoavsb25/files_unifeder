@@ -1,11 +1,15 @@
 """
 Merge processor module.
-Main orchestration logic for processing files and merging PDFs.
+Job execution and row-level logic (process_job, process_row_with_models).
+Do not add UI-facing API or row loading from file here—those belong in
+merge_orchestrator. When on_progress is provided, row-level logs are
+suppressed (quiet=True) to avoid duplicate or out-of-order messages.
+Log levels: user-visible milestones = info, per-row detail = debug.
 """
 
 import tempfile
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -32,28 +36,11 @@ logger = get_logger("pdf_merger.core.merge_processor")
 # Module-level constants
 EXCEL_FILE_EXTENSIONS = Constants.EXCEL_FILE_EXTENSIONS
 OUTPUT_FILENAME_PATTERN = Constants.OUTPUT_FILENAME_PATTERN
-DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
 BYTES_PER_MB = Constants.BYTES_PER_MB
-# When listing missing files in progress, show full list only if at or below this count
-MAX_MISSING_TO_LIST = 3
+MAX_MISSING_TO_LIST = Constants.MAX_MISSING_TO_LIST
 
 
-@dataclass
-class ProcessingResult:
-    """
-    Result of processing a file.
-    
-    Note: This class is kept for backward compatibility.
-    New code should use MergeResult from models package.
-    """
-    total_rows: int
-    successful_merges: int
-    failed_rows: List[int]
-    
-    def __str__(self) -> str:
-        return (f"Total rows processed: {self.total_rows}\n"
-                f"Successfully merged PDFs: {self.successful_merges}\n"
-                f"Failed rows: {len(self.failed_rows)}")
+from .result_types import ProcessingResult
 
 
 def _convert_excel_files_to_pdfs(
@@ -120,6 +107,81 @@ def _cleanup_temp_files(temp_pdf_files: List[Path], quiet: bool = False) -> None
                 logger.warning(f"  Failed to clean up temporary file {temp_pdf.name}: {e}")
 
 
+@dataclass
+class _RowPipelineResult:
+    """Internal result of the shared find/convert/merge pipeline for one row."""
+    success: bool
+    output_path: Optional[Path] = None
+    source_files: List[Path] = field(default_factory=list)
+    missing: List[str] = field(default_factory=list)
+    error_message: Optional[str] = None
+
+
+def _run_row_pipeline(
+    row_index: int,
+    serial_numbers: List[str],
+    source_folder: Path,
+    output_folder: Path,
+    fail_on_ambiguous: bool = False,
+    quiet: bool = False,
+) -> _RowPipelineResult:
+    """
+    Shared pipeline: find source files, convert Excel to PDF, merge, cleanup.
+    Caller is responsible for parsing/validation and for mapping to legacy bool or RowResult.
+    May raise ValueError on ambiguous match when fail_on_ambiguous is True.
+    """
+    source_files: List[Path] = []
+    missing: List[str] = []
+    for serial_number in serial_numbers:
+        source_path = find_source_file(source_folder, serial_number, fail_on_ambiguous=fail_on_ambiguous)
+        if source_path:
+            source_files.append(source_path)
+            if not quiet:
+                logger.info(f"  Found: {source_path.name}")
+        else:
+            missing.append(serial_number)
+            if not quiet:
+                logger.warning(f"  File not found for serial number '{serial_number}'")
+    if not source_files:
+        return _RowPipelineResult(
+            success=False,
+            source_files=[],
+            missing=missing,
+            error_message="No source files found",
+        )
+    # Caller is responsible for cleanup; we always run _cleanup_temp_files in finally to avoid disk leak
+    temp_pdf_files: List[Path] = []
+    try:
+        pdf_paths, temp_pdf_files = _convert_excel_files_to_pdfs(source_files, output_folder, quiet=quiet)
+        if not pdf_paths:
+            return _RowPipelineResult(
+                success=False,
+                source_files=source_files,
+                missing=missing,
+                error_message="No PDF files available for merging",
+            )
+        output_filename = OUTPUT_FILENAME_PATTERN.format(row_index + 1)
+        output_path = output_folder / output_filename
+        if not quiet:
+            logger.info(f"  Merging {len(pdf_paths)} file(s) into {output_filename}...")
+        success = merge_pdfs(pdf_paths, output_path)
+        if not quiet:
+            if success:
+                logger.info(f"  ✓ Successfully created {output_filename}")
+            else:
+                logger.error(f"  ✗ Failed to create {output_filename}")
+        return _RowPipelineResult(
+            success=success,
+            output_path=output_path if success else None,
+            source_files=source_files,
+            missing=missing,
+            error_message=None if success else "Failed to merge PDFs",
+        )
+    finally:
+        # Always cleanup temp PDFs to avoid disk leak
+        _cleanup_temp_files(temp_pdf_files, quiet=quiet)
+
+
 def process_row(row_index: int, serial_numbers_str: str, source_folder: Path, 
                 output_folder: Path) -> bool:
     """
@@ -157,45 +219,14 @@ def process_row(row_index: int, serial_numbers_str: str, source_folder: Path,
         return False
     
     logger.info(f"Row {row_index + 1}: Processing serial numbers: {', '.join(normalized_serial_numbers)}")
-    
-    # Find all source files (PDFs and Excel files)
-    source_files = []
-    for serial_number in normalized_serial_numbers:
-        source_path = find_source_file(source_folder, serial_number)
-        if source_path:
-            source_files.append(source_path)
-            logger.info(f"  Found: {source_path.name}")
-        else:
-            logger.warning(f"  File not found for serial number '{serial_number}'")
-    
-    if not source_files:
+    pipeline = _run_row_pipeline(
+        row_index, normalized_serial_numbers, source_folder, output_folder, fail_on_ambiguous=False, quiet=False
+    )
+    if not pipeline.success and not pipeline.source_files:
         logger.warning(f"Row {row_index + 1}: No files found for any serial numbers, skipping...")
-        return False
-    
-    # Convert Excel files to PDF and collect all PDF paths
-    try:
-        pdf_paths, temp_pdf_files = _convert_excel_files_to_pdfs(source_files, output_folder)
-        
-        if not pdf_paths:
-            logger.warning(f"Row {row_index + 1}: No PDF files to merge (conversions may have failed), skipping...")
-            return False
-        
-        output_filename = OUTPUT_FILENAME_PATTERN.format(row_index + 1)
-        output_path = output_folder / output_filename
-        
-        logger.info(f"  Merging {len(pdf_paths)} file(s) into {output_filename}...")
-        success = merge_pdfs(pdf_paths, output_path)
-        
-        if success:
-            logger.info(f"  ✓ Successfully created {output_filename}")
-        else:
-            logger.error(f"  ✗ Failed to create {output_filename}")
-        
-        return success
-        
-    finally:
-        # Clean up temporary PDF files
-        _cleanup_temp_files(temp_pdf_files)
+    elif not pipeline.success and pipeline.error_message == "No PDF files available for merging":
+        logger.warning(f"Row {row_index + 1}: No PDF files to merge (conversions may have failed), skipping...")
+    return pipeline.success
 
 
 def process_row_with_models(
@@ -233,104 +264,85 @@ def process_row_with_models(
 
     if not quiet:
         logger.info(f"Row {row.row_index + 1}: Processing serial numbers: {', '.join(row.serial_numbers)}")
-
-    # Find all source files (PDFs and Excel files) with ambiguity detection
-    source_files = []
-    missing_serial_numbers = []
-
-    for serial_number in row.serial_numbers:
-        try:
-            source_path = find_source_file(source_folder, serial_number, fail_on_ambiguous=fail_on_ambiguous)
-            if source_path:
-                source_files.append(source_path)
-                if not quiet:
-                    logger.info(f"  Found: {source_path.name}")
-                metrics.record_counter("files_found")
-            else:
-                missing_serial_numbers.append(serial_number)
-                if not quiet:
-                    logger.warning(f"  File not found for serial number '{serial_number}'")
-                metrics.record_counter("files_missing")
-        except ValueError as e:
-            # Ambiguous match detected
-            metrics.record_counter("ambiguous_matches")
-            if not quiet:
-                logger.error(f"  Ambiguous match for '{serial_number}': {e}")
-            if fail_on_ambiguous:
-                # Re-raise if we should fail fast
-                raise
-
-    if not source_files:
-        if not quiet:
-            logger.warning(f"Row {row.row_index + 1}: No files found for any serial numbers, skipping...")
+    try:
+        pipeline = _run_row_pipeline(
+            row.row_index,
+            row.serial_numbers,
+            source_folder,
+            output_folder,
+            fail_on_ambiguous=fail_on_ambiguous,
+            quiet=quiet,
+        )
+    except ValueError:
+        metrics.record_counter("ambiguous_matches")
+        raise
+    processing_time = time.time() - start_time
+    metrics.record_timer("row_processing_time", processing_time)
+    for _ in pipeline.source_files:
+        metrics.record_counter("files_found")
+    for _ in pipeline.missing:
+        metrics.record_counter("files_missing")
+    if not pipeline.source_files:
         return RowResult(
             row_index=row.row_index,
             status=RowStatus.SKIPPED,
-            files_missing=missing_serial_numbers,
-            error_message="No source files found"
+            files_missing=pipeline.missing,
+            error_message=pipeline.error_message or "No source files found",
         )
-    
-    # Convert Excel files to PDF and collect all PDF paths
-    try:
-        pdf_paths, temp_pdf_files = _convert_excel_files_to_pdfs(source_files, output_folder, quiet=quiet)
-
-        if not pdf_paths:
-            if not quiet:
-                logger.warning(f"Row {row.row_index + 1}: No PDF files to merge (conversions may have failed), skipping...")
-            return RowResult(
-                row_index=row.row_index,
-                status=RowStatus.FAILED,
-                files_found=source_files,
-                files_missing=missing_serial_numbers,
-                error_message="No PDF files available for merging"
-            )
-
-        output_filename = OUTPUT_FILENAME_PATTERN.format(row.row_index + 1)
-        output_path = output_folder / output_filename
-
-        if not quiet:
-            logger.info(f"  Merging {len(pdf_paths)} file(s) into {output_filename}...")
-        success = merge_pdfs(pdf_paths, output_path)
-
-        processing_time = time.time() - start_time
-        metrics.record_timer("row_processing_time", processing_time)
-
-        if success:
-            if not quiet:
-                logger.info(f"  ✓ Successfully created {output_filename}")
-            metrics.record_counter("rows_successful")
-            # Record file size if available
-            try:
-                file_size_mb = output_path.stat().st_size / BYTES_PER_MB
+    if pipeline.error_message == "No PDF files available for merging":
+        return RowResult(
+            row_index=row.row_index,
+            status=RowStatus.FAILED,
+            files_found=pipeline.source_files,
+            files_missing=pipeline.missing,
+            error_message=pipeline.error_message,
+        )
+    if pipeline.success:
+        metrics.record_counter("rows_successful")
+        try:
+            if pipeline.output_path:
+                file_size_mb = pipeline.output_path.stat().st_size / BYTES_PER_MB
                 metrics.record_gauge("output_file_size_mb", file_size_mb)
-            except Exception:
-                pass
-            
-            status = RowStatus.PARTIAL if missing_serial_numbers else RowStatus.SUCCESS
-            return RowResult(
-                row_index=row.row_index,
-                status=status,
-                output_file=output_path,
-                files_found=source_files,
-                files_missing=missing_serial_numbers,
-                processing_time=processing_time
-            )
-        else:
-            if not quiet:
-                logger.error(f"  ✗ Failed to create {output_filename}")
-            metrics.record_counter("rows_failed", tags={"reason": "merge_failed"})
-            return RowResult(
-                row_index=row.row_index,
-                status=RowStatus.FAILED,
-                files_found=source_files,
-                files_missing=missing_serial_numbers,
-                error_message="Failed to merge PDFs",
-                processing_time=processing_time
-            )
+        except Exception:
+            pass
+        status = RowStatus.PARTIAL if pipeline.missing else RowStatus.SUCCESS
+        return RowResult(
+            row_index=row.row_index,
+            status=status,
+            output_file=pipeline.output_path,
+            files_found=pipeline.source_files,
+            files_missing=pipeline.missing,
+            processing_time=processing_time,
+        )
+    metrics.record_counter("rows_failed", tags={"reason": "merge_failed"})
+    return RowResult(
+        row_index=row.row_index,
+        status=RowStatus.FAILED,
+        files_found=pipeline.source_files,
+        files_missing=pipeline.missing,
+        error_message=pipeline.error_message or "Failed to merge PDFs",
+        processing_time=processing_time,
+    )
 
-    finally:
-        # Clean up temporary PDF files
-        _cleanup_temp_files(temp_pdf_files, quiet=quiet)
+
+def _progress_message_for_row_result(row_num: int, total_rows: int, row_result: RowResult) -> List[str]:
+    """Return progress message line(s) for a row result (status line plus optional detail)."""
+    pdf_count = sum(1 for p in row_result.files_found if p.suffix.lower() == ".pdf")
+    excel_count = sum(1 for p in row_result.files_found if p.suffix.lower() in EXCEL_FILE_EXTENSIONS)
+    if row_result.is_skipped():
+        msg = f"Row {row_num} → No valid files found → Skipped" if row_result.files_missing else f"Row {row_num} → Skipped"
+    elif row_result.is_success() or row_result.status == RowStatus.PARTIAL:
+        msg = f"Row {row_num} → Found {pdf_count} PDFs, {excel_count} Excel → Success"
+    else:
+        msg = f"Row {row_num} → Found {pdf_count} PDFs, {excel_count} Excel → Failed"
+    lines = [msg]
+    missing = row_result.files_missing or []
+    if missing:
+        detail = f"  • {len(missing)} files not found ({', '.join(missing)})" if len(missing) <= MAX_MISSING_TO_LIST else f"  • {len(missing)} files not found"
+        lines.append(detail)
+    elif row_result.is_skipped() and not row_result.files_found:
+        lines.append("  • No valid files to merge")
+    return lines
 
 
 def process_job(
@@ -387,37 +399,9 @@ def process_job(
             result.add_row_result(row_result)
 
             if on_progress:
-                pdf_count = sum(1 for p in row_result.files_found if p.suffix.lower() == ".pdf")
-                excel_count = sum(
-                    1 for p in row_result.files_found
-                    if p.suffix.lower() in EXCEL_FILE_EXTENSIONS
-                )
-                # SKIPPED = no matching files; FAILED = crash/exception/merge error
-                if row_result.is_skipped():
-                    status = "Skipped"
-                    if row_result.files_missing:
-                        msg = f"Row {row_num} → No valid files found → Skipped"
-                    else:
-                        msg = f"Row {row_num} → Skipped"
-                elif row_result.is_success() or row_result.status == RowStatus.PARTIAL:
-                    status = "Success"
-                    msg = f"Row {row_num} → Found {pdf_count} PDFs, {excel_count} Excel → {status}"
-                else:
-                    status = "Failed"
-                    msg = f"Row {row_num} → Found {pdf_count} PDFs, {excel_count} Excel → {status}"
-
-                on_progress(PROGRESS_PROCESSING, row_num, total_rows, msg)
-
-                # Group error details per row (single summary instead of one line per file)
-                missing = row_result.files_missing or []
-                if missing:
-                    if len(missing) <= MAX_MISSING_TO_LIST:
-                        detail = f"  • {len(missing)} files not found ({', '.join(missing)})"
-                    else:
-                        detail = f"  • {len(missing)} files not found"
-                    on_progress(PROGRESS_PROCESSING, row_num, total_rows, detail)
-                elif row_result.is_skipped() and not row_result.files_found:
-                    on_progress(PROGRESS_PROCESSING, row_num, total_rows, "  • No valid files to merge")
+                msg = _progress_message_for_row_result(row_num, total_rows, row_result)
+                for line in msg:
+                    on_progress(PROGRESS_PROCESSING, row_num, total_rows, line)
         
         result.total_processing_time = time.time() - start_time
         metrics.record_timer("job_processing_time", result.total_processing_time)
@@ -449,7 +433,7 @@ def process_file(
     file_path: Path,
     source_folder: Path,
     output_folder: Path,
-    required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
+    required_column: str = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN,
     on_progress: Optional[ProgressCallback] = None,
 ) -> ProcessingResult:
     """

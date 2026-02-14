@@ -27,7 +27,7 @@ ERROR_RED = "#EF4444"
 TEXT_PRIMARY = "#E5E7EB"
 TEXT_SECONDARY = "#9CA3AF"
 
-# Aliases for backward compatibility
+# Aliases for backward compatibility (preferred names: CARD_BACKGROUND, ERROR_RED, etc.)
 BG_DARK = APP_BACKGROUND
 CARD_BG = CARD_BACKGROUND
 INPUT_CONTAINER_BG = INPUT_BACKGROUND
@@ -42,6 +42,9 @@ BLUE_INFO = TEXT_SECONDARY
 
 # Results mini-card
 METRIC_CARD_BG = "#242424"
+
+# Step symbols for setup cards (Instructions File, Source Directory, Output Directory)
+STEP_SYMBOLS = ("①", "②", "③")
 
 # Typography
 FONT_TITLE_SIZE = 28

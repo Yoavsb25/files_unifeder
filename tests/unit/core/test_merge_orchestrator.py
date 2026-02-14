@@ -7,12 +7,12 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from pdf_merger.core.constants import Constants
 from pdf_merger.core.merge_orchestrator import run_merge, run_merge_job
-from pdf_merger.core.merge_processor import ProcessingResult
+from pdf_merger.core.result_types import ProcessingResult
 from pdf_merger.models import MergeResult
 
 
 class TestRunMerge:
-    """Test cases for run_merge function."""
+    """Test cases for run_merge function. Legacy API; prefer run_merge_job."""
     
     @patch('pdf_merger.core.merge_orchestrator.process_file')
     @patch('pdf_merger.core.merge_orchestrator.logger')

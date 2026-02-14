@@ -41,13 +41,8 @@ class MatchBehavior(Enum):
     LOG_ALL = "log_all"
 
 
-class RowStatus(Enum):
-    """Status of a row processing operation."""
-    SUCCESS = "success"
-    FAILED = "failed"
-    SKIPPED = "skipped"
-    PARTIAL = "partial"
-
+# RowStatus moved to pdf_merger.models.enums (domain layer). Re-export for backward compatibility.
+from ..models import RowStatus  # noqa: F401
 
 class LicenseColor(Enum):
     """License status colors for UI display."""

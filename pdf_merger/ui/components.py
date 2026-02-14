@@ -28,6 +28,7 @@ from .theme import (
     METRIC_CARD_PADDING,
     SECTION_SPACING,
     SUMMARY_CARD_SPACING,
+    STEP_SYMBOLS,
     TEXT_PRIMARY,
     TEXT_SECONDARY,
     GREEN_SUCCESS,
@@ -60,7 +61,18 @@ class LogHandler:
             self.buffer.clear()
 
 
-STEP_SYMBOLS = ("①", "②", "③")
+def bind_focus_highlight(
+    entry: ctk.CTkEntry,
+    border_color_focus: str = PRIMARY_BLUE,
+    border_color_default: str = CARD_BORDER,
+    on_focus_out: Optional[Callable[[], None]] = None,
+) -> None:
+    """Bind focus in/out: border_color_focus on focus, on FocusOut call on_focus_out or set border to border_color_default."""
+    entry.bind("<FocusIn>", lambda e: entry.configure(border_color=border_color_focus))
+    if on_focus_out is not None:
+        entry.bind("<FocusOut>", lambda e: on_focus_out())
+    else:
+        entry.bind("<FocusOut>", lambda e: entry.configure(border_color=border_color_default))
 
 
 def _mono_font():
@@ -125,8 +137,7 @@ class SetupCard(ctk.CTkFrame):
             border_color=CARD_BORDER,
         )
         self.path_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
-        self.path_entry.bind("<FocusIn>", lambda e: self.path_entry.configure(border_color=PRIMARY_BLUE))
-        self.path_entry.bind("<FocusOut>", lambda e: self._on_entry_focus_out())
+        bind_focus_highlight(self.path_entry, on_focus_out=self._on_entry_focus_out)
 
         # Secondary-style browse button, height matches input
         self.browse_button = ctk.CTkButton(

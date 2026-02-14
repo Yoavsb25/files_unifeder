@@ -1,6 +1,8 @@
 """
 Matching rules package.
-Formal matching rules for finding source files with ambiguity detection.
+File resolution policy lives here (find_best_match, find_matching_files);
+file I/O and merge operations live in operations/. Matching changes (e.g. indexing)
+should not leak into operations.
 """
 
 from .rules import (

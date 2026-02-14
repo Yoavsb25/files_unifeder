@@ -5,7 +5,7 @@ Unit tests for result_reporter module.
 import pytest
 from pathlib import Path
 from pdf_merger.core.result_reporter import format_result_summary, format_result_detailed
-from pdf_merger.core.merge_processor import ProcessingResult
+from pdf_merger.core.result_types import ProcessingResult
 from pdf_merger.models import MergeResult, RowResult, RowStatus
 
 

@@ -59,3 +59,5 @@ class Constants:
     # UI/Display Configuration
     MAX_DISPLAY_STRING_LENGTH = 100  # Maximum length for displaying strings before truncation
     PERCENTAGE_MULTIPLIER = 100.0  # Multiplier for percentage calculations (0.0 to 100.0)
+    # Display / progress: when listing missing files in progress, show full list only if at or below this count
+    MAX_MISSING_TO_LIST = 3

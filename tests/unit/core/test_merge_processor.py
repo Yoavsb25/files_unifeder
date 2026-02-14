@@ -1,5 +1,6 @@
 """
 Unit tests for merge_processor module.
+Tests are grouped by class; see test_merge_processor_result.py for ProcessingResult.
 """
 
 import pytest
@@ -10,43 +11,14 @@ from pdf_merger.core.merge_processor import (
     process_file,
     process_row_with_models,
     process_job,
-    ProcessingResult
 )
+from pdf_merger.core.result_types import ProcessingResult
 from pdf_merger.utils.exceptions import PDFMergerError, InvalidFileFormatError
 from pdf_merger.models import Row, MergeJob, MergeResult, RowResult, RowStatus
 
 
-class TestProcessingResult:
-    """Test cases for ProcessingResult dataclass."""
-    
-    def test_processing_result_creation(self):
-        """Test creating a ProcessingResult instance."""
-        result = ProcessingResult(
-            total_rows=10,
-            successful_merges=8,
-            failed_rows=[3, 7]
-        )
-        
-        assert result.total_rows == 10
-        assert result.successful_merges == 8
-        assert result.failed_rows == [3, 7]
-    
-    def test_processing_result_string_representation(self):
-        """Test string representation of ProcessingResult."""
-        result = ProcessingResult(
-            total_rows=10,
-            successful_merges=8,
-            failed_rows=[3, 7]
-        )
-        
-        str_repr = str(result)
-        assert "Total rows processed: 10" in str_repr
-        assert "Successfully merged PDFs: 8" in str_repr
-        assert "Failed rows: 2" in str_repr
-
-
 class TestProcessRow:
-    """Test cases for process_row function."""
+    """Test cases for process_row function. Legacy API; prefer process_row_with_models / process_job."""
     
     @patch('pdf_merger.core.merge_processor.merge_pdfs')
     @patch('pdf_merger.core.merge_processor.find_source_file')
@@ -148,7 +120,7 @@ class TestProcessRow:
 
 
 class TestProcessFile:
-    """Test cases for process_file function."""
+    """Test cases for process_file function. Legacy API; prefer process_job."""
     
     @patch('pdf_merger.core.merge_processor.process_job')
     @patch('pdf_merger.core.merge_processor.read_data_file')

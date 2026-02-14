@@ -1,6 +1,8 @@
 """
 Custom exceptions for PDF Merger.
 Provides specific exception types for different error conditions.
+Use a consistent message pattern (e.g. "What failed: reason" or "Context: detail")
+so logs and UI show uniform, parseable messages.
 """
 
 from pathlib import Path

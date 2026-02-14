@@ -13,9 +13,6 @@ from ..core.constants import Constants
 
 logger = get_logger("pdf_merger.models.merge_job")
 
-# Module-level constants
-DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
-
 
 @dataclass
 class MergeJob:
@@ -45,7 +42,7 @@ class MergeJob:
         input_file: Path,
         source_folder: Path,
         output_folder: Path,
-        required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
+        required_column: str = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN,
         job_id: Optional[str] = None,
         metadata: Optional[dict] = None
     ) -> 'MergeJob':

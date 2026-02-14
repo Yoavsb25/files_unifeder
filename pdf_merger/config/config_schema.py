@@ -11,7 +11,6 @@ from ..core.constants import Constants
 from ..utils.logging_utils import get_logger
 
 logger = get_logger("pdf_merger.config.config_schema")
-DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
 
 
 @dataclass
@@ -115,7 +114,7 @@ class ConfigSchema:
             ValueError: If column name is invalid
         """
         if value is None or value == "":
-            return DEFAULT_SERIAL_NUMBERS_COLUMN
+            return Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
         
         # Column names should be non-empty strings
         if not isinstance(value, str) or len(value.strip()) == 0:
@@ -177,8 +176,8 @@ class ConfigSchema:
                 validated['required_column'] = ConfigSchema.validate_column(data['required_column'])
             except ValueError as e:
                 logger.warning(f"Invalid required_column in config: {e}")
-                validated['required_column'] = DEFAULT_SERIAL_NUMBERS_COLUMN
+                validated['required_column'] = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
         else:
-            validated['required_column'] = DEFAULT_SERIAL_NUMBERS_COLUMN
+            validated['required_column'] = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
         
         return validated

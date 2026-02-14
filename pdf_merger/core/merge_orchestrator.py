@@ -2,14 +2,18 @@
 Merge orchestrator module.
 
 Orchestrator: UI-facing API and job construction (run_merge, run_merge_job);
-loads rows from file and builds MergeJob. Processor (merge_processor): job
-execution and row-level logic (process_job, process_row_with_models).
+loads rows from file and builds MergeJob. Orchestrator owns row creation from
+raw data (Row.from_raw_data); processor only receives MergeJob with rows. Do not
+add job execution or row-level logic here—those belong in merge_processor. Processor (merge_processor): job
+execution and row-level logic (process_job, process_row_with_models); do not
+add UI-facing API or row loading from file here.
 """
 
 from pathlib import Path
 from typing import Optional
 
-from .merge_processor import process_file, process_job, ProcessingResult
+from .merge_processor import process_file, process_job
+from .result_types import ProcessingResult
 from .types import ProgressCallback, PROGRESS_LOADING
 from ..models import MergeJob, MergeResult, Row
 from .csv_excel_reader import read_data_file

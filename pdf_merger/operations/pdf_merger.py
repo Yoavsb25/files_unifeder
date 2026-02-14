@@ -18,7 +18,7 @@ logger = get_logger("pdf_merger.operations.pdf_merger")
 PDF_FILE_EXTENSION = Constants.PDF_FILE_EXTENSION
 STREAMING_THRESHOLD_MB = Constants.STREAMING_THRESHOLD_MB
 
-# Lazy import of PDF libraries - only import when merge_pdfs is called
+# Lazy import of PDF libraries to avoid heavy pypdf/PyPDF2 load at application startup
 _PdfWriter = None
 _PdfReader = None
 

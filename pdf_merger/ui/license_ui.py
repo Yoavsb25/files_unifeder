@@ -1,5 +1,10 @@
 """
 License-related UI logic.
+
+Contract: update_license_display(license_manager, license_label) updates the label widget's
+text and text_color to show license status (e.g. "Licensed · Expires YYYY-MM-DD" in green,
+or error/expired message in red). The app provides the label and calls update_license_display
+after startup and when refreshing; this module does not create widgets, only configures them.
 """
 
 from typing import Optional

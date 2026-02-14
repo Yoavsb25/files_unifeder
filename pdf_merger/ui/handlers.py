@@ -9,11 +9,10 @@ from typing import Callable, Optional
 
 from ..utils.validators import validate_file, validate_folder
 from ..utils.exceptions import PDFMergerError
-from ..core.constants import Constants
+from ..config.config_manager import resolve_required_column
 from ..core import run_merge_job, format_result_summary
 from ..core.types import ProgressCallback
 
-DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
 from ..models import MergeResult
 from ..utils.logging_utils import get_logger
 
@@ -21,7 +20,7 @@ logger = get_logger("pdf_merger.ui.handlers")
 
 
 class FileSelectionHandler:
-    """Handler for file and directory selection."""
+    """Handler for file and directory selection. Validation errors use (field_id, message) with field_id one of FIELD_*."""
 
     FIELD_INPUT = "input_file"
     FIELD_SOURCE = "source_dir"
@@ -56,7 +55,7 @@ class FileSelectionHandler:
         Returns:
             Selected path if valid, None otherwise
         """
-        column = required_column or DEFAULT_SERIAL_NUMBERS_COLUMN
+        column = resolve_required_column(required_column, None)
         file_path = filedialog.askopenfilename(
             title="Select CSV or Excel File",
             filetypes=[
@@ -112,8 +111,9 @@ class MergeHandler:
 
     The public flag is_processing must be reset in both success and error paths
     (in finally and in completion callbacks) so the UI correctly reflects
-    "processing" state; it is set True when a merge starts and False when the
-    worker thread finishes (success or exception).
+    "processing" state. UI updates from the worker thread must use thread-safe
+    means (e.g. root.after()) when updating widgets; the app schedules progress
+    and completion callbacks on the main thread accordingly.
     """
 
     def __init__(
@@ -173,7 +173,7 @@ class MergeHandler:
                 input_file=input_file,
                 pdf_dir=pdf_dir,
                 output_dir=output_dir,
-                required_column=required_column or DEFAULT_SERIAL_NUMBERS_COLUMN,
+                required_column=resolve_required_column(required_column, None),
                 fail_on_ambiguous=fail_on_ambiguous_matches,
                 on_progress=self.on_progress,
             )

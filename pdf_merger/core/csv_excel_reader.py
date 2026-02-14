@@ -120,13 +120,16 @@ def read_excel(file_path: Path) -> Iterator[Dict[str, Any]]:
 def read_data_file(file_path: Path) -> Iterator[Dict[str, Any]]:
     """
     Read a data file (CSV or Excel) with a unified interface.
-    
+
+    Yields dicts with string keys (column names). Missing required column is
+    not checked here; Row.from_raw_data and validators handle that when building rows.
+
     Args:
         file_path: Path to the CSV or Excel file
-        
+
     Yields:
-        Dictionary representing each row
-        
+        Dictionary representing each row (column name -> value)
+
     Raises:
         InvalidFileFormatError: If the file type is not supported
     """

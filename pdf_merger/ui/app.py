@@ -5,7 +5,7 @@ CustomTkinter GUI application for PDF Merger.
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import customtkinter as ctk
 
@@ -16,8 +16,8 @@ from .. import APP_VERSION
 from ..licensing import LicenseManager
 from ..utils.logging_utils import get_logger, setup_logger
 from ..models import MergeResult
-from ..config.config_manager import load_config, save_config
-from .components import SetupCard, LicenseFrame, LogArea, ResultsFrame, Footer
+from ..config.config_manager import load_config, save_config, resolve_required_column
+from .components import SetupCard, LicenseFrame, LogArea, ResultsFrame, Footer, bind_focus_highlight
 from .license_ui import update_license_display
 from .handlers import FileSelectionHandler, MergeHandler
 from .theme import (
@@ -57,7 +57,7 @@ class PDFMergerApp(ctk.CTk):
         self.minsize(620, 500)
         self.configure(fg_color=APP_BACKGROUND)
         
-        # License manager (use passed-in instance to avoid duplicate validation at startup)
+        # If license_manager is provided, the app does not re-validate at startup (main passes it in after validation).
         self.license_manager = license_manager or LicenseManager(app_version=APP_VERSION)
         self.license_valid = False
         
@@ -155,8 +155,7 @@ class PDFMergerApp(ctk.CTk):
             border_color=CARD_BORDER,
         )
         self.column_entry.pack(side="left")
-        self.column_entry.bind("<FocusIn>", lambda e: self.column_entry.configure(border_color=PRIMARY_BLUE))
-        self.column_entry.bind("<FocusOut>", lambda e: self.column_entry.configure(border_color=CARD_BORDER))
+        bind_focus_highlight(self.column_entry)
 
         # Setup Section - three step-based cards (Instructions File includes serial column row)
         self.input_file_selector = SetupCard(
@@ -235,47 +234,52 @@ class PDFMergerApp(ctk.CTk):
         )
         self._update_ui_state()
     
+    def _apply_path_config(
+        self,
+        path_str: Optional[str],
+        path_attr: str,
+        selector: Any,
+        validator: Callable[[Path], None],
+        log_label: str,
+    ) -> None:
+        """Apply one path from config: validate, set path attribute and selector, log. Swallows exceptions and logs warning."""
+        if not path_str:
+            return
+        try:
+            path = Path(path_str)
+            validator(path)
+            setattr(self, path_attr, path)
+            selector.set_path(str(path))
+            logger.info(f"Loaded {log_label} from config: {path}")
+        except Exception as e:
+            logger.warning(f"Could not load {log_label} from config: {e}")
+
     def _load_config_into_ui(self):
         """Load configuration values into UI fields if available."""
-        # Load column name
+        from ..utils.validators import validate_file, validate_folder
+
         self.column_entry.insert(0, self.config.required_column)
 
-        if self.config.input_file:
-            try:
-                path = Path(self.config.input_file)
-                if path.exists():
-                    from ..utils.validators import validate_file
+        def validate_input(p: Path) -> None:
+            if p.exists():
+                validate_file(p, required_column=self.config.required_column)
 
-                    validate_file(path, required_column=self.config.required_column)
-                    self.input_file_path = path
-                    self.input_file_selector.set_path(str(path))
-                    logger.info(f"Loaded input file from config: {path}")
-            except Exception as e:
-                logger.warning(f"Could not load input file from config: {e}")
-        
-        if self.config.pdf_dir:
-            try:
-                path = Path(self.config.pdf_dir)
-                if path.exists():
-                    from ..utils.validators import validate_folder
-                    validate_folder(path, "Source")
-                    self.pdf_dir_path = path
-                    self.pdf_dir_selector.set_path(str(path))
-                    logger.info(f"Loaded source directory from config: {path}")
-            except Exception as e:
-                logger.warning(f"Could not load source directory from config: {e}")
-        
-        if self.config.output_dir:
-            try:
-                path = Path(self.config.output_dir)
-                path.mkdir(parents=True, exist_ok=True)
-                self.output_dir_path = path
-                self.output_dir_selector.set_path(str(path))
-                logger.info(f"Loaded output directory from config: {path}")
-            except Exception as e:
-                logger.warning(f"Could not load output directory from config: {e}")
-        
-        # Update UI state after loading config
+        def validate_source(p: Path) -> None:
+            if p.exists():
+                validate_folder(p, "Source")
+
+        def validate_output(p: Path) -> None:
+            p.mkdir(parents=True, exist_ok=True)
+
+        self._apply_path_config(
+            self.config.input_file, "input_file_path", self.input_file_selector, validate_input, "input file"
+        )
+        self._apply_path_config(
+            self.config.pdf_dir, "pdf_dir_path", self.pdf_dir_selector, validate_source, "source directory"
+        )
+        self._apply_path_config(
+            self.config.output_dir, "output_dir_path", self.output_dir_selector, validate_output, "output directory"
+        )
         self._update_ui_state()
     
     def _has_validation_errors(self) -> bool:
@@ -286,23 +290,35 @@ class PDFMergerApp(ctk.CTk):
             or self.output_dir_selector.has_error()
         )
 
+    def _get_run_block_reasons(self) -> list:
+        """Return list of reasons Run Merge is disabled (empty if allowed). Use for tooltips/debugging."""
+        reasons = []
+        if not self.license_valid:
+            reasons.append("License invalid")
+        if self.input_file_path is None:
+            reasons.append("Select input file")
+        if self.pdf_dir_path is None:
+            reasons.append("Select source directory")
+        if self.output_dir_path is None:
+            reasons.append("Select output directory")
+        if self._has_validation_errors():
+            reasons.append("Fix validation errors")
+        if self.merge_handler.is_processing:
+            reasons.append("Merge in progress")
+        return reasons
+
+    def _can_run_merge(self) -> bool:
+        """True if Run Merge is allowed: valid license, all paths set, no validation errors, not already processing."""
+        return len(self._get_run_block_reasons()) == 0
+
     def _update_ui_state(self):
         """Update UI state based on license, selection, and validation."""
-        can_run = (
-            self.license_valid
-            and self.input_file_path is not None
-            and self.pdf_dir_path is not None
-            and self.output_dir_path is not None
-            and not self._has_validation_errors()
-            and not self.merge_handler.is_processing
-        )
-        self.run_button.configure(state="normal" if can_run else "disabled")
+        self.run_button.configure(state="normal" if self._can_run_merge() else "disabled")
     
     
     def _get_column(self) -> str:
-        """Get column name from entry, or default if empty."""
-        value = self.column_entry.get().strip()
-        return value or self.config.required_column or Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+        """Get column name from entry, or default if empty. Uses resolve_required_column for consistent resolution."""
+        return resolve_required_column(self.column_entry.get(), self.config.required_column)
 
     def _on_validation_error(self, field: str, message: str):
         """Handle validation error - show inline on the affected selector."""
@@ -347,7 +363,7 @@ class PDFMergerApp(ctk.CTk):
             self._update_ui_state()
 
     def _open_output_folder(self, path: str):
-        """Open the output folder in the system file manager."""
+        """Open the output folder in the system file manager. Uses OS-specific command (open/explorer/xdg-open)."""
         folder = Path(path)
         if not folder.exists():
             return

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .row import Row
-from ..core.enums import RowStatus
+from .enums import RowStatus
 from ..core.constants import Constants
 from ..utils.logging_utils import get_logger
 
@@ -51,7 +51,56 @@ class RowResult:
     def is_skipped(self) -> bool:
         """Check if row was skipped."""
         return self.status == RowStatus.SKIPPED
-    
+
+    @classmethod
+    def skipped(
+        cls,
+        row_index: int,
+        error_message: Optional[str] = None,
+        files_missing: Optional[List[str]] = None,
+    ) -> "RowResult":
+        """Factory: create a skipped row result."""
+        return cls(row_index=row_index, status=RowStatus.SKIPPED, error_message=error_message, files_missing=files_missing or [])
+
+    @classmethod
+    def failed(
+        cls,
+        row_index: int,
+        error_message: Optional[str] = None,
+        files_found: Optional[List[Path]] = None,
+        files_missing: Optional[List[str]] = None,
+        processing_time: Optional[float] = None,
+    ) -> "RowResult":
+        """Factory: create a failed row result."""
+        return cls(
+            row_index=row_index,
+            status=RowStatus.FAILED,
+            error_message=error_message,
+            files_found=files_found or [],
+            files_missing=files_missing or [],
+            processing_time=processing_time,
+        )
+
+    @classmethod
+    def success(
+        cls,
+        row_index: int,
+        output_file: Path,
+        files_found: List[Path],
+        files_missing: Optional[List[str]] = None,
+        processing_time: Optional[float] = None,
+    ) -> "RowResult":
+        """Factory: create a successful row result (status SUCCESS or PARTIAL if files_missing)."""
+        status = RowStatus.PARTIAL if (files_missing and len(files_missing) > 0) else RowStatus.SUCCESS
+        return cls(
+            row_index=row_index,
+            status=status,
+            output_file=output_file,
+            files_found=files_found,
+            files_missing=files_missing or [],
+            processing_time=processing_time,
+        )
+
     def __str__(self) -> str:
         status_str = self.status.value.upper()
         if self.output_file:
@@ -62,8 +111,9 @@ class RowResult:
 @dataclass
 class MergeResult:
     """
-    Result of processing a merge job.
-    
+    Preferred result type for run_merge_job; includes per-row details and timing.
+    Use ProcessingResult (core.result_types) only for legacy run_merge compatibility.
+
     Attributes:
         total_rows: Total number of rows processed
         successful_merges: Number of successfully merged rows

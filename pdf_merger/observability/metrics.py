@@ -5,12 +5,26 @@ Collects and tracks application metrics.
 
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Protocol, runtime_checkable
 from collections import defaultdict
 
 from ..utils.logging_utils import get_logger
 
 logger = get_logger("pdf_merger.observability.metrics")
+
+
+@runtime_checkable
+class MetricsRecorder(Protocol):
+    """Minimal protocol for recording metrics. Use this type for dependency injection and test doubles."""
+
+    def record_counter(self, name: str, value: int = 1, tags: Optional[Dict[str, str]] = None) -> None:
+        ...
+
+    def record_timer(self, name: str, duration: float, tags: Optional[Dict[str, str]] = None) -> None:
+        ...
+
+    def record_gauge(self, name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
+        ...
 
 
 @dataclass

@@ -50,9 +50,8 @@ def show_error_dialog(title: str, message: str):
 
 
 def main():
-    """Main entry point."""
+    """Main entry point. Bootstrap order: logging → config → observability → license → GUI."""
     logger.info(f"PDF Batch Merger v{APP_VERSION} starting...")
-    
     # Load configuration for observability settings
     config = load_config()
     

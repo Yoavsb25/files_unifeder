@@ -647,6 +647,7 @@ This section provides comprehensive mermaid diagrams explaining the code structu
 10. **Determinism**: Formal matching rules ensure consistent behavior across runs
 11. **Cross-Platform**: Handles platform differences (case sensitivity, Unicode, long paths)
 12. **Privacy-First**: All observability features are opt-in with anonymization
+13. **Public API**: External code and integrations should use only symbols exported from the `pdf_merger` package root (`__all__` in `pdf_merger/__init__.py`); internal modules may change without notice.
 
 ---
 

@@ -2,6 +2,11 @@
 Validation utilities module.
 Handles validation of files, folders, and paths.
 
+Validation API: validate_file, validate_folder, validate_paths raise
+FileNotFoundError, MissingColumnError, InvalidFileFormatError, ValidationError.
+Used by UI (inline errors), orchestrator, and config loading. Config is valid
+at process_job/run_merge_job entry; backend can assume valid paths and column.
+
 Validation Strategy:
 - Critical validations (file/folder/paths): Raise exceptions - these are pre-conditions
 - Data validations (serial numbers): Return bool - allow graceful degradation
@@ -15,8 +20,7 @@ from ..core.csv_excel_reader import get_file_columns
 
 logger = get_logger("pdf_merger.utils.validators")
 
-# Module-level constants
-DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+# Module-level constants (single source: core.constants.Constants)
 SERIAL_NUMBER_PREFIX = Constants.SERIAL_NUMBER_PREFIX
 SERIAL_NUMBER_PREFIX_LOWER = Constants.SERIAL_NUMBER_PREFIX_LOWER
 
@@ -63,7 +67,7 @@ def validate_folder(folder_path: Path, folder_type: str = "Folder") -> None:
         raise FileNotFoundError(folder_path, file_type=f"{folder_type} (not a directory)")
 
 
-def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
+def validate_file(file_path: Path, required_column: str = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
     """
     Validate that a data file exists and has the required column.
     
@@ -94,8 +98,8 @@ def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS
         raise InvalidFileFormatError(f"Error reading file: {e}", file_path=file_path) from e
 
 
-def validate_paths(file_path: Path, source_folder: Path, output_folder: Path, 
-                   required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
+def validate_paths(file_path: Path, source_folder: Path, output_folder: Path,
+                   required_column: str = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
     """
     Validate all paths needed for processing.
     
