@@ -58,6 +58,8 @@ class MockCTkTextbox:
         pass
     def delete(self, *args, **kwargs):
         pass
+    def tag_config(self, *args, **kwargs):
+        pass
 
 class MockCTkFont:
     def __init__(self, *args, **kwargs):
@@ -227,10 +229,53 @@ class TestLogArea:
         mock_parent = MagicMock()
         log_area = LogArea(mock_parent)
         log_area.log_text = MagicMock()
-        
+
         log_area.clear()
-        
+
         log_area.log_text.delete.assert_called_once_with("1.0", "end")
+
+    def test_log_area_log_success(self):
+        """Test logging success message with styling."""
+        mock_parent = MagicMock()
+        log_area = LogArea(mock_parent)
+        log_area.log_text = MagicMock()
+
+        log_area.log_success("Merged successfully")
+
+        log_area.log_text.insert.assert_called_once()
+        args = log_area.log_text.insert.call_args[0]
+        assert args[0] == "end"
+        assert "Merged successfully" in args[1]
+        assert "✅" in args[1]
+        assert args[2] == LogArea.TAG_SUCCESS
+
+    def test_log_area_log_error(self):
+        """Test logging error message with styling."""
+        mock_parent = MagicMock()
+        log_area = LogArea(mock_parent)
+        log_area.log_text = MagicMock()
+
+        log_area.log_error("Failed to merge")
+
+        log_area.log_text.insert.assert_called_once()
+        args = log_area.log_text.insert.call_args[0]
+        assert "Failed to merge" in args[1]
+        assert "❌" in args[1]
+        assert args[2] == LogArea.TAG_ERROR
+
+    def test_log_area_log_info(self):
+        """Test logging info message with styling."""
+        mock_parent = MagicMock()
+        log_area = LogArea(mock_parent)
+        log_area.log_text = MagicMock()
+
+        log_area.log_info("Reading input file")
+
+        log_area.log_text.insert.assert_called_once()
+        args = log_area.log_text.insert.call_args[0]
+        assert "Reading input file" in args[1]
+        assert "📋" in args[1]
+        assert args[2] == LogArea.TAG_INFO
 
 
 class TestFooter:

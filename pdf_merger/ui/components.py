@@ -112,31 +112,64 @@ class LicenseFrame(ctk.CTkFrame):
 
 
 class LogArea(ctk.CTkFrame):
-    """Log/output display area."""
-    
+    """Log/output display area with colored output and emojis."""
+
+    # Tag names for colored text
+    TAG_ERROR = "error"
+    TAG_SUCCESS = "success"
+    TAG_INFO = "info"
+
+    # Emojis for visual clarity
+    EMOJI_ERROR = "❌ "
+    EMOJI_SUCCESS = "✅ "
+    EMOJI_INFO = "📋 "
+
     def __init__(self, parent):
         super().__init__(parent)
-        
+
         # Label
         ctk.CTkLabel(
             self,
             text="Output Log:",
-            font=ctk.CTkFont(size=12, weight="bold")
+            font=ctk.CTkFont(size=12, weight="bold"),
         ).pack(anchor="w", padx=10, pady=(10, 5))
-        
+
         # Text widget
         self.log_text = ctk.CTkTextbox(
             self,
             font=ctk.CTkFont(size=11),
-            wrap="word"
+            wrap="word",
         )
         self.log_text.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-    
+
+        # Configure tags for colored output
+        self.log_text.tag_config(self.TAG_ERROR, foreground="#e74c3c")  # red
+        self.log_text.tag_config(self.TAG_SUCCESS, foreground="#27ae60")  # green
+        self.log_text.tag_config(self.TAG_INFO, foreground="#3498db")  # blue
+
+    def _log_with_tag(self, message: str, tag: str, emoji: str):
+        """Add message with color tag and emoji."""
+        text = emoji + message + "\n"
+        self.log_text.insert("end", text, tag)
+        self.log_text.see("end")
+
     def log(self, message: str):
-        """Add message to log area."""
+        """Add plain message to log area (backward compatible)."""
         self.log_text.insert("end", message + "\n")
         self.log_text.see("end")
-    
+
+    def log_info(self, message: str):
+        """Add info message with blue color and info emoji."""
+        self._log_with_tag(message, self.TAG_INFO, self.EMOJI_INFO)
+
+    def log_success(self, message: str):
+        """Add success message with green color and checkmark emoji."""
+        self._log_with_tag(message, self.TAG_SUCCESS, self.EMOJI_SUCCESS)
+
+    def log_error(self, message: str):
+        """Add error message with red color and error emoji."""
+        self._log_with_tag(message, self.TAG_ERROR, self.EMOJI_ERROR)
+
     def clear(self):
         """Clear the log area."""
         self.log_text.delete("1.0", "end")

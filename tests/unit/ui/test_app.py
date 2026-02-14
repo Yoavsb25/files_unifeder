@@ -60,6 +60,16 @@ class MockCTkTextbox:
     def delete(self, *args, **kwargs):
         pass
 
+class MockCTkEntry:
+    def __init__(self, *args, **kwargs):
+        pass
+    def pack(self, *args, **kwargs):
+        pass
+    def insert(self, *args, **kwargs):
+        pass
+    def get(self):
+        return ""
+
 class MockCTkFont:
     def __init__(self, *args, **kwargs):
         pass
@@ -81,6 +91,7 @@ mock_ctk.CTkFrame = MockCTkFrame
 mock_ctk.CTkLabel = MockCTkLabel
 mock_ctk.CTkButton = MockCTkButton
 mock_ctk.CTkTextbox = MockCTkTextbox
+mock_ctk.CTkEntry = MockCTkEntry
 mock_ctk.CTkFont = MockCTkFont
 mock_ctk.set_appearance_mode = MagicMock()
 mock_ctk.set_default_color_theme = MagicMock()
@@ -122,7 +133,11 @@ class TestPDFMergerApp:
         app.input_file_selector = MagicMock()
         app.pdf_dir_selector = MagicMock()
         app.output_dir_selector = MagicMock()
-        
+
+        # Mock column entry
+        app.column_entry = MagicMock()
+        app.column_entry.get.return_value = "Document ID"
+
         # Mock handlers
         app.file_handler = MagicMock()
         app.merge_handler = MagicMock()
@@ -178,16 +193,19 @@ class TestPDFMergerApp:
     def test_select_input_file_success(self):
         """Test selecting input file successfully."""
         app = self._create_mock_app()
-        app._log = MagicMock()
+        app._log_info = MagicMock()
         app._update_ui_state = MagicMock()
-        
+
         mock_path = Path("/path/to/input.csv")
         app.file_handler.select_input_file.return_value = mock_path
-        
+
         app._select_input_file()
-        
+
         assert app.input_file_path == mock_path
         app.input_file_selector.set_path.assert_called_once_with(str(mock_path))
+        app.file_handler.select_input_file.assert_called_once_with(
+            required_column="Document ID",
+        )
         app._update_ui_state.assert_called_once()
     
     def test_select_input_file_cancelled(self):
@@ -259,11 +277,11 @@ class TestPDFMergerApp:
     def test_show_error(self):
         """Test showing error message."""
         app = self._create_mock_app()
-        app._log = MagicMock()
-        
+        app._log_error = MagicMock()
+
         app._show_error("Error message")
-        
-        app._log.assert_called_once_with("ERROR: Error message")
+
+        app._log_error.assert_called_once_with("Error message")
         app.footer.update_status.assert_called_once_with("Error", StatusColor.RED)
     
     def test_run_merge_success(self, tmp_path):
@@ -275,11 +293,12 @@ class TestPDFMergerApp:
         app.output_dir_path = tmp_path / "output"
         
         app._run_merge()
-        
+
         app.merge_handler.run_merge.assert_called_once_with(
             input_file=app.input_file_path,
             pdf_dir=app.pdf_dir_path,
-            output_dir=app.output_dir_path
+            output_dir=app.output_dir_path,
+            required_column="Document ID",
         )
     
     def test_run_merge_invalid_license(self):
@@ -321,48 +340,56 @@ class TestPDFMergerApp:
         """Test merge start handler."""
         app = self._create_mock_app()
         app._log = MagicMock()
-        
+        app._log_info = MagicMock()
+
         app._on_merge_start()
-        
-        app.run_button.configure.assert_called_with(state="disabled", text="Processing...")
-        app.footer.update_status.assert_called_with("Processing...", StatusColor.BLUE)
+
+        app.run_button.configure.assert_called_with(
+            state="disabled", text="Processing..."
+        )
+        app.footer.update_status.assert_called_with(
+            "Processing...", StatusColor.BLUE
+        )
         app.log_area.clear.assert_called_once()
-        assert app._log.call_count >= 4  # Multiple log calls
+        assert app._log.call_count >= 2  # Separator lines
+        assert app._log_info.call_count >= 4  # Start message and paths
     
     def test_on_merge_complete_success(self):
         """Test merge completion handler with full success."""
         app = self._create_mock_app()
         app.merge_handler.is_processing = True
-        app.merge_handler.format_result = MagicMock(return_value="Summary text")
         app._log = MagicMock()
+        app._log_info = MagicMock()
+        app._log_success = MagicMock()
+        app._log_error = MagicMock()
         app._update_ui_state = MagicMock()
-        
+
         result = ProcessingResult(
             total_rows=5,
             successful_merges=5,
-            failed_rows=[]
+            failed_rows=[],
         )
-        
+
         app._on_merge_complete(result)
-        
+
         assert app.merge_handler.is_processing is False
         app.run_button.configure.assert_called_with(state="normal", text="Run Merge")
         app.footer.update_status.assert_called_with("Success", StatusColor.GREEN)
-        app.merge_handler.format_result.assert_called_once_with(result)
+        app._log_success.assert_called()
     
     def test_on_merge_error(self):
         """Test merge error handler."""
         app = self._create_mock_app()
         app.merge_handler.is_processing = True
-        app._log = MagicMock()
+        app._log_error = MagicMock()
         app._update_ui_state = MagicMock()
-        
+
         app._on_merge_error("Error message")
-        
+
         assert app.merge_handler.is_processing is False
         app.run_button.configure.assert_called_with(state="normal", text="Run Merge")
         app.footer.update_status.assert_called_with("Error", StatusColor.RED)
-        assert app._log.call_count >= 2  # Multiple log calls
+        app._log_error.assert_called_once_with("Error message")
     
     def test_update_ui_state_all_selected(self):
         """Test updating UI state when all paths are selected."""

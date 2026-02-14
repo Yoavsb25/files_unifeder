@@ -7,6 +7,8 @@ from typing import Optional
 
 import customtkinter as ctk
 
+from ..core.constants import Constants
+
 from .. import APP_VERSION
 from ..licensing import LicenseManager
 from ..utils.logging_utils import get_logger, setup_logger
@@ -71,7 +73,8 @@ class PDFMergerApp(ctk.CTk):
         self.merge_handler = MergeHandler(
             on_start=self._on_merge_start,
             on_complete=self._on_merge_complete,
-            on_error=self._on_merge_error
+            on_error=self._on_merge_error,
+            on_progress=self._schedule_progress,
         )
     
     def _build_ui(self):
@@ -116,10 +119,31 @@ class PDFMergerApp(ctk.CTk):
         self.output_dir_selector = FileSelector(
             file_frame,
             label_text="Output Directory:",
-            on_select=self._select_output_directory
+            on_select=self._select_output_directory,
         )
         self.output_dir_selector.pack(fill="x", padx=10, pady=10)
-        
+
+        # Column name for serial numbers
+        column_frame = ctk.CTkFrame(file_frame, fg_color="transparent")
+        column_frame.pack(fill="x", padx=10, pady=10)
+        ctk.CTkLabel(
+            column_frame,
+            text="Serial numbers column:",
+            font=ctk.CTkFont(size=12, weight="bold"),
+        ).pack(anchor="w", pady=(0, 5))
+        self.column_entry = ctk.CTkEntry(
+            column_frame,
+            placeholder_text=Constants.GOLDFARB_SERIAL_NUMBER_COLUMN,
+            font=ctk.CTkFont(size=11),
+        )
+        self.column_entry.pack(fill="x")
+        ctk.CTkLabel(
+            column_frame,
+            text="Column in Excel/CSV containing document IDs (e.g. Document ID, serial_numbers)",
+            font=ctk.CTkFont(size=10),
+            text_color="gray",
+        ).pack(anchor="w", pady=(2, 0))
+
         # Run button
         self.run_button = ctk.CTkButton(
             main_frame,
@@ -148,12 +172,16 @@ class PDFMergerApp(ctk.CTk):
     
     def _load_config_into_ui(self):
         """Load configuration values into UI fields if available."""
+        # Load column name
+        self.column_entry.insert(0, self.config.required_column)
+
         if self.config.input_file:
             try:
                 path = Path(self.config.input_file)
                 if path.exists():
                     from ..utils.validators import validate_file
-                    validate_file(path)
+
+                    validate_file(path, required_column=self.config.required_column)
                     self.input_file_path = path
                     self.input_file_selector.set_path(str(path))
                     logger.info(f"Loaded input file from config: {path}")
@@ -198,48 +226,93 @@ class PDFMergerApp(ctk.CTk):
         self.run_button.configure(state="normal" if can_run else "disabled")
     
     
+    def _get_column(self) -> str:
+        """Get column name from entry, or default if empty."""
+        value = self.column_entry.get().strip()
+        return value or Constants.GOLDFARB_SERIAL_NUMBER_COLUMN
+
     def _select_input_file(self):
         """Open file dialog to select input CSV/Excel file."""
-        path = self.file_handler.select_input_file()
+        path = self.file_handler.select_input_file(
+            required_column=self._get_column(),
+        )
         if path:
             self.input_file_path = path
             self.input_file_selector.set_path(str(path))
-            self._log(f"Selected input file: {path.name}")
+            self._log_info(f"Selected input file: {path.name}")
             self._update_ui_state()
-    
+
     def _select_pdf_directory(self):
         """Open directory dialog to select source directory."""
         path = self.file_handler.select_directory(
             title="Select Source Directory (PDF and Excel files)",
             validate=True,
-            folder_type="Source"
+            folder_type="Source",
         )
         if path:
             self.pdf_dir_path = path
             self.pdf_dir_selector.set_path(str(path))
-            self._log(f"Selected source directory: {path}")
+            self._log_info(f"Selected source directory: {path}")
             self._update_ui_state()
-    
+
     def _select_output_directory(self):
         """Open directory dialog to select output directory."""
         path = self.file_handler.select_directory(
             title="Select Output Directory",
-            validate=False
+            validate=False,
         )
         if path:
             self.output_dir_path = path
             self.output_dir_selector.set_path(str(path))
-            self._log(f"Selected output directory: {path}")
+            self._log_info(f"Selected output directory: {path}")
             self._update_ui_state()
     
     def _log(self, message: str):
-        """Add message to log area."""
+        """Add plain message to log area."""
         self.log_area.log(message)
         logger.info(message)
-    
+
+    def _log_info(self, message: str):
+        """Add info message with styling."""
+        self.log_area.log_info(message)
+        logger.info(message)
+
+    def _log_success(self, message: str):
+        """Add success message with styling."""
+        self.log_area.log_success(message)
+        logger.info(message)
+
+    def _log_error(self, message: str):
+        """Add error message with styling."""
+        self.log_area.log_error(message)
+        logger.error(message)
+
+    def _schedule_progress(
+        self, step: str, current: int, total: int, message: str
+    ):
+        """Schedule progress update on main thread (called from worker)."""
+        self.after(
+            0,
+            lambda s=step, c=current, t=total, m=message: self._on_merge_progress(
+                s, c, t, m
+            ),
+        )
+
+    def _on_merge_progress(
+        self, step: str, current: int, total: int, message: str
+    ):
+        """Handle progress update from merge operation."""
+        if step == "loading":
+            self._log_info(f"Step 1/3: {message}")
+        elif step == "processing":
+            if "success" in message:
+                self._log_success(message)
+            else:
+                self._log_error(message)
+
     def _show_error(self, message: str):
         """Show error message."""
-        self._log(f"ERROR: {message}")
+        self._log_error(message)
         self.footer.update_status("Error", StatusColor.RED)
     
     def _run_merge(self):
@@ -255,7 +328,8 @@ class PDFMergerApp(ctk.CTk):
         self.merge_handler.run_merge(
             input_file=self.input_file_path,
             pdf_dir=self.pdf_dir_path,
-            output_dir=self.output_dir_path
+            output_dir=self.output_dir_path,
+            required_column=self._get_column(),
         )
     
     def _on_merge_start(self):
@@ -264,11 +338,11 @@ class PDFMergerApp(ctk.CTk):
         self.footer.update_status("Processing...", StatusColor.BLUE)
         self.log_area.clear()
         self._log("=" * 60)
-        self._log("Starting merge operation...")
+        self._log_info("Starting merge operation...")
         self._log("=" * 60)
-        self._log(f"Input file: {self.input_file_path}")
-        self._log(f"Source directory: {self.pdf_dir_path}")
-        self._log(f"Output directory: {self.output_dir_path}")
+        self._log_info(f"Input file: {self.input_file_path}")
+        self._log_info(f"Source directory: {self.pdf_dir_path}")
+        self._log_info(f"Output directory: {self.output_dir_path}")
         self._log("")
     
     def _on_merge_complete(self, result: ProcessingResult):
@@ -276,19 +350,32 @@ class PDFMergerApp(ctk.CTk):
         # Reset processing state
         self.merge_handler.is_processing = False
         self.run_button.configure(state="normal", text="Run Merge")
-        
+
         self._log("")
         self._log("=" * 60)
-        summary = self.merge_handler.format_result(result)
-        self._log(summary)
-        
+        self._log_info("Processing Complete")
+        self._log("=" * 60)
+        self._log_info(f"Total rows processed: {result.total_rows}")
+        if result.successful_merges > 0:
+            self._log_success(f"Successfully merged PDFs: {result.successful_merges}")
+        failed_count = len(result.failed_rows)
+        if failed_count > 0:
+            self._log_error(f"Failed rows: {failed_count}")
+            if result.failed_rows:
+                failed_str = ", ".join(map(str, result.failed_rows))
+                max_len = Constants.MAX_DISPLAY_STRING_LENGTH
+                if len(failed_str) > max_len:
+                    failed_str = failed_str[: max_len - 3] + "..."
+                self._log_error(f"Failed row numbers: {failed_str}")
+        self._log("=" * 60)
+
         if result.successful_merges == result.total_rows:
             self.footer.update_status("Success", StatusColor.GREEN)
         elif result.successful_merges > 0:
             self.footer.update_status("Partial success", StatusColor.ORANGE)
         else:
             self.footer.update_status("Failed", StatusColor.RED)
-        
+
         self._update_ui_state()
     
     def _on_merge_error(self, error_message: str):
@@ -296,12 +383,12 @@ class PDFMergerApp(ctk.CTk):
         # Reset processing state
         self.merge_handler.is_processing = False
         self.run_button.configure(state="normal", text="Run Merge")
-        
+
         self._log("")
         self._log("=" * 60)
-        self._log(f"ERROR: {error_message}")
+        self._log_error(error_message)
         self._log("=" * 60)
-        
+
         self.footer.update_status("Error", StatusColor.RED)
         self._update_ui_state()
 

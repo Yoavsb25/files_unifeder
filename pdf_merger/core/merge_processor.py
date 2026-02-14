@@ -7,7 +7,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from ..operations.pdf_merger import find_source_file, merge_pdfs
 from ..operations.excel_to_pdf_converter import convert_excel_to_pdf
@@ -308,38 +308,62 @@ def process_row_with_models(
         _cleanup_temp_files(temp_pdf_files)
 
 
-def process_job(job: MergeJob, fail_on_ambiguous: bool = True) -> MergeResult:
+def process_job(
+    job: MergeJob,
+    fail_on_ambiguous: bool = True,
+    on_progress: Optional[Callable[[str, int, int, str], None]] = None,
+) -> MergeResult:
     """
     Process a merge job using domain models.
-    
+
     Args:
         job: MergeJob instance to process
         fail_on_ambiguous: If True, raises ValueError on ambiguous matches (default: True)
-        
+        on_progress: Optional callback (step, current, total, message) for progress updates
+
     Returns:
         MergeResult with detailed processing results
     """
     job.output_folder.mkdir(parents=True, exist_ok=True)
-    
+
+    total_rows = job.get_total_rows()
     result = MergeResult(
-        total_rows=job.get_total_rows(),
+        total_rows=total_rows,
         successful_merges=0,
-        job_id=job.job_id
+        job_id=job.job_id,
     )
-    
+
     start_time = time.time()
     metrics = get_metrics_collector()
     metrics.record_counter("jobs_started")
-    
+
     try:
-        for row in job.rows:
+        for idx, row in enumerate(job.rows):
             row_result = process_row_with_models(
-                row, 
-                job.source_folder, 
+                row,
+                job.source_folder,
                 job.output_folder,
-                fail_on_ambiguous=fail_on_ambiguous
+                fail_on_ambiguous=fail_on_ambiguous,
             )
             result.add_row_result(row_result)
+
+            if on_progress:
+                row_num = row.row_index + 1
+                status = (
+                    "success"
+                    if (row_result.is_success() or row_result.status == RowStatus.PARTIAL)
+                    else "failed"
+                )
+                msg = f"Row {row_num}/{total_rows}: {status}"
+                on_progress("processing", row_num, total_rows, msg)
+                # Emit missing file details so user sees them in the output window
+                for serial_number in row_result.files_missing or []:
+                    on_progress(
+                        "processing",
+                        row_num,
+                        total_rows,
+                        f"  File not found for serial number '{serial_number}'",
+                    )
         
         result.total_processing_time = time.time() - start_time
         metrics.record_timer("job_processing_time", result.total_processing_time)
@@ -367,31 +391,40 @@ def process_job(job: MergeJob, fail_on_ambiguous: bool = True) -> MergeResult:
         return result
 
 
-def process_file(file_path: Path, source_folder: Path, output_folder: Path,
-                 required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> ProcessingResult:
+def process_file(
+    file_path: Path,
+    source_folder: Path,
+    output_folder: Path,
+    required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
+    on_progress: Optional[Callable[[str, int, int, str], None]] = None,
+) -> ProcessingResult:
     """
     Process an entire data file and merge PDFs and Excel files for each row.
-    
+
     Note: This function is kept for backward compatibility.
     New code should use process_job() with MergeJob domain model.
-    
+
     Args:
         file_path: Path to the CSV or Excel file
         source_folder: Folder containing the PDF and Excel files
         output_folder: Folder where merged PDFs will be saved
         required_column: Name of the column containing serial numbers
-        
+        on_progress: Optional callback (step, current, total, message) for progress updates
+
     Returns:
         ProcessingResult with statistics about the processing
     """
+    if on_progress:
+        on_progress("loading", 0, 0, "Reading input file...")
+
     # Use domain models internally but return legacy result
     job = MergeJob.create(
         input_file=file_path,
         source_folder=source_folder,
         output_folder=output_folder,
-        required_column=required_column
+        required_column=required_column,
     )
-    
+
     # Load rows from file
     try:
         for row_index, row_data in enumerate(read_data_file(file_path), start=0):
@@ -400,9 +433,13 @@ def process_file(file_path: Path, source_folder: Path, output_folder: Path,
     except Exception as e:
         logger.error(f"Error reading file: {e}")
         return ProcessingResult(total_rows=0, successful_merges=0, failed_rows=[])
-    
+
+    total_rows = job.get_total_rows()
+    if on_progress:
+        on_progress("loading", total_rows, total_rows, f"Loaded {total_rows} rows")
+
     # Process job
-    merge_result = process_job(job)
+    merge_result = process_job(job, on_progress=on_progress)
     
     # Convert to legacy result
     return ProcessingResult(

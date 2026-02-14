@@ -5,7 +5,7 @@ Event handlers for PDF Merger UI.
 import threading
 import tkinter.filedialog as filedialog
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 from ..utils.validators import validate_file, validate_folder
 from ..utils.exceptions import PDFMergerError
@@ -27,22 +27,35 @@ class FileSelectionHandler:
         self.on_file_selected = on_file_selected
         self.on_error = on_error
     
-    def select_input_file(self) -> Optional[Path]:
-        """Open file dialog to select input CSV/Excel file."""
+    def select_input_file(
+        self,
+        required_column: Optional[str] = None,
+    ) -> Optional[Path]:
+        """Open file dialog to select input CSV/Excel file.
+
+        Args:
+            required_column: Column name for validation (uses default if None)
+
+        Returns:
+            Selected path if valid, None otherwise
+        """
+        from ..core.constants import Constants
+
+        column = required_column or Constants.GOLDFARB_SERIAL_NUMBER_COLUMN
         file_path = filedialog.askopenfilename(
             title="Select CSV or Excel File",
             filetypes=[
                 ("CSV/Excel files", "*.csv *.xlsx *.xls"),
                 ("CSV files", "*.csv"),
                 ("Excel files", "*.xlsx *.xls"),
-                ("All files", "*.*")
-            ]
+                ("All files", "*.*"),
+            ],
         )
-        
+
         if file_path:
             path = Path(file_path)
             try:
-                validate_file(path)
+                validate_file(path, required_column=column)
                 if self.on_file_selected:
                     self.on_file_selected(path)
                 return path
@@ -82,55 +95,66 @@ class FileSelectionHandler:
 
 class MergeHandler:
     """Handler for merge operations."""
-    
+
     def __init__(
         self,
         on_start: Optional[Callable[[], None]] = None,
         on_complete: Optional[Callable[[ProcessingResult], None]] = None,
-        on_error: Optional[Callable[[str], None]] = None
+        on_error: Optional[Callable[[str], None]] = None,
+        on_progress: Optional[Callable[[str, int, int, str], None]] = None,
     ):
         self.on_start = on_start
         self.on_complete = on_complete
         self.on_error = on_error
+        self.on_progress = on_progress
         self.is_processing = False
-    
+
     def run_merge(
         self,
         input_file: Path,
         pdf_dir: Path,
-        output_dir: Path
+        output_dir: Path,
+        required_column: Optional[str] = None,
     ):
         """Run the merge operation in a separate thread."""
         if self.is_processing:
             return
-        
+
         if not all([input_file, pdf_dir, output_dir]):
             if self.on_error:
                 self.on_error("Please select all required files and directories.")
             return
-        
+
         self.is_processing = True
-        
+
         if self.on_start:
             self.on_start()
-        
+
         # Run in separate thread
         thread = threading.Thread(
             target=self._merge_worker,
-            args=(input_file, pdf_dir, output_dir),
-            daemon=True
+            args=(input_file, pdf_dir, output_dir, required_column),
+            daemon=True,
         )
         thread.start()
-    
-    def _merge_worker(self, input_file: Path, pdf_dir: Path, output_dir: Path):
+
+    def _merge_worker(
+        self,
+        input_file: Path,
+        pdf_dir: Path,
+        output_dir: Path,
+        required_column: Optional[str],
+    ):
         """Worker thread for merge operation."""
         try:
             result = run_merge(
                 input_file=input_file,
                 pdf_dir=pdf_dir,
-                output_dir=output_dir
+                output_dir=output_dir,
+                required_column=required_column,
+                on_progress=self.on_progress,
             )
-            
+
             if self.on_complete:
                 self.on_complete(result)
         except Exception as e:

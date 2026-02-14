@@ -5,6 +5,7 @@ Unit tests for merge_orchestrator module.
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+from pdf_merger.core.constants import Constants
 from pdf_merger.core.merge_orchestrator import run_merge, run_merge_job
 from pdf_merger.core.merge_processor import ProcessingResult
 from pdf_merger.models import MergeResult
@@ -31,12 +32,12 @@ class TestRunMerge:
         result = run_merge(input_file, pdf_dir, output_dir)
         
         assert result == expected_result
-        mock_process_file.assert_called_once_with(
-            file_path=input_file,
-            source_folder=pdf_dir,
-            output_folder=output_dir,
-            required_column='serial_numbers'
-        )
+        mock_process_file.assert_called_once()
+        call_kwargs = mock_process_file.call_args[1]
+        assert call_kwargs["file_path"] == input_file
+        assert call_kwargs["source_folder"] == pdf_dir
+        assert call_kwargs["output_folder"] == output_dir
+        assert call_kwargs["required_column"] == Constants.GOLDFARB_SERIAL_NUMBER_COLUMN
         assert mock_logger.info.called
     
     @patch('pdf_merger.core.merge_orchestrator.process_file')

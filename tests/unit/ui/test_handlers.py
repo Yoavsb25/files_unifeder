@@ -46,13 +46,16 @@ class TestFileSelectionHandler:
         mock_validate.return_value = None
         mock_dialog.return_value = "/path/to/input.csv"
         on_file = MagicMock()
-        
+
         handler = FileSelectionHandler(on_file_selected=on_file)
         result = handler.select_input_file()
-        
+
         assert result == Path("/path/to/input.csv")
         on_file.assert_called_once_with(Path("/path/to/input.csv"))
-        mock_validate.assert_called_once_with(Path("/path/to/input.csv"))
+        mock_validate.assert_called_once()
+        args, kwargs = mock_validate.call_args
+        assert args[0] == Path("/path/to/input.csv")
+        assert "required_column" in kwargs
     
     @patch('pdf_merger.ui.handlers.filedialog.askopenfilename')
     @patch('pdf_merger.ui.handlers.validate_file')
@@ -164,16 +167,19 @@ class TestMergeHandler:
         on_start = MagicMock()
         on_complete = MagicMock()
         on_error = MagicMock()
-        
+        on_progress = MagicMock()
+
         handler = MergeHandler(
             on_start=on_start,
             on_complete=on_complete,
-            on_error=on_error
+            on_error=on_error,
+            on_progress=on_progress,
         )
-        
+
         assert handler.on_start == on_start
         assert handler.on_complete == on_complete
         assert handler.on_error == on_error
+        assert handler.on_progress == on_progress
     
     def test_run_merge_missing_paths(self):
         """Test running merge with missing paths."""
@@ -232,11 +238,13 @@ class TestMergeHandler:
         assert handler.is_processing is False
         on_start.assert_called_once()
         on_complete.assert_called_once_with(result)
-        mock_run_merge.assert_called_once_with(
-            input_file=input_file,
-            pdf_dir=pdf_dir,
-            output_dir=output_dir
-        )
+        mock_run_merge.assert_called_once()
+        call_kwargs = mock_run_merge.call_args[1]
+        assert call_kwargs["input_file"] == input_file
+        assert call_kwargs["pdf_dir"] == pdf_dir
+        assert call_kwargs["output_dir"] == output_dir
+        assert "required_column" in call_kwargs
+        assert "on_progress" in call_kwargs
     
     @patch('pdf_merger.ui.handlers.run_merge')
     def test_run_merge_error(self, mock_run_merge, tmp_path):
