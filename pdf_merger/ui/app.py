@@ -9,6 +9,7 @@ from typing import Any, Callable, Optional
 
 import customtkinter as ctk
 
+from ..core import format_failed_rows_display
 from ..core.constants import Constants
 from ..core.types import PROGRESS_LOADING, PROGRESS_PROCESSING
 
@@ -97,17 +98,20 @@ class PDFMergerApp(ctk.CTk):
     
     def _build_ui(self):
         """Build the user interface."""
-        # Use grid for responsive layout - content expands with window
+        main_frame = self._build_layout_frames()
+        self._build_header(main_frame)
+        self._build_setup_cards(main_frame)
+        self._build_run_section(main_frame)
+        self._build_results_and_log(main_frame)
+
+    def _build_layout_frames(self):
+        """Create grid, outer frame, scrollable frame, and main content frame; return main frame."""
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
-        
-        # Outer frame (32px margin)
         outer_frame = ctk.CTkFrame(self, fg_color="transparent")
         outer_frame.grid(row=0, column=0, sticky="nsew", padx=32, pady=32)
         outer_frame.grid_rowconfigure(0, weight=1)
         outer_frame.grid_columnconfigure(0, weight=1)
-        
-        # Scrollable content area - enables scrolling when content exceeds window
         self.scrollable_frame = ctk.CTkScrollableFrame(
             outer_frame,
             fg_color="transparent",
@@ -115,8 +119,6 @@ class PDFMergerApp(ctk.CTk):
         )
         self.scrollable_frame.grid(row=0, column=0, sticky="nsew")
         self.scrollable_frame.grid_columnconfigure(0, weight=1)
-        
-        # Inner content - fills scrollable area, scrolls when content exceeds window
         main_frame = ctk.CTkFrame(
             self.scrollable_frame,
             fg_color=APP_BACKGROUND,
@@ -124,20 +126,18 @@ class PDFMergerApp(ctk.CTk):
         )
         main_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
         main_frame.grid_columnconfigure(0, weight=1)
-        
-        # Title (Header Section)
+        return main_frame
+
+    def _build_header(self, main_frame):
+        """Build title, license frame, and serial numbers column row; store column_frame for setup cards."""
         title_label = ctk.CTkLabel(
             main_frame,
             text=APP_NAME,
             font=ctk.CTkFont(size=FONT_TITLE_SIZE, weight="bold")
         )
         title_label.pack(pady=(0, SECTION_SPACING))
-        
-        # License status frame
         self.license_frame = LicenseFrame(main_frame)
         self.license_frame.pack(fill="x", pady=(0, SECTION_SPACING))
-
-        # Serial numbers column row (packed inside Instructions File card via extra_row)
         column_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         ctk.CTkLabel(
             column_frame,
@@ -156,18 +156,19 @@ class PDFMergerApp(ctk.CTk):
         )
         self.column_entry.pack(side="left")
         bind_focus_highlight(self.column_entry)
+        self._column_frame = column_frame
 
-        # Setup Section - three step-based cards (Instructions File includes serial column row)
+    def _build_setup_cards(self, main_frame):
+        """Build the three setup cards (Instructions File, Source Directory, Output Directory)."""
         self.input_file_selector = SetupCard(
             main_frame,
             step_number=1,
             title="Instructions File",
             helper_text="Must include a serial_numbers column (or Document ID)",
             on_select=self._select_input_file,
-            extra_row=column_frame,
+            extra_row=self._column_frame,
         )
         self.input_file_selector.pack(fill="x", pady=(0, CARD_SPACING))
-
         self.pdf_dir_selector = SetupCard(
             main_frame,
             step_number=2,
@@ -176,7 +177,6 @@ class PDFMergerApp(ctk.CTk):
             on_select=self._select_pdf_directory,
         )
         self.pdf_dir_selector.pack(fill="x", pady=(0, CARD_SPACING))
-
         self.output_dir_selector = SetupCard(
             main_frame,
             step_number=3,
@@ -186,7 +186,8 @@ class PDFMergerApp(ctk.CTk):
         )
         self.output_dir_selector.pack(fill="x", pady=(0, SECTION_SPACING))
 
-        # Run button (Run Section) - primary blue, full width, 54px
+    def _build_run_section(self, main_frame):
+        """Build Run Merge button and progress bar."""
         self.run_button = ctk.CTkButton(
             main_frame,
             text="Run Merge",
@@ -200,8 +201,6 @@ class PDFMergerApp(ctk.CTk):
             cursor="hand2",
         )
         self.run_button.pack(fill="x", pady=(SECTION_SPACING, 8))
-
-        # Loading progress bar (hidden by default)
         self.progress_bar = ctk.CTkProgressBar(
             main_frame,
             mode="indeterminate",
@@ -211,18 +210,15 @@ class PDFMergerApp(ctk.CTk):
         self.progress_bar.pack(fill="x", pady=(0, SECTION_SPACING))
         self.progress_bar.pack_forget()
 
-        # Results section (hidden until first run)
+    def _build_results_and_log(self, main_frame):
+        """Build results frame, log area, and footer."""
         self.results_frame = ResultsFrame(
             main_frame,
             on_open_output=self._open_output_folder,
             on_toggle_log=self._toggle_detailed_log,
         )
-
-        # Log/output area
         self.log_area = LogArea(main_frame)
         self.log_area.pack(fill="both", expand=True, pady=(0, SECTION_SPACING))
-        
-        # Footer
         self.footer = Footer(main_frame)
         self.footer.pack(fill="x")
     
@@ -508,11 +504,7 @@ class PDFMergerApp(ctk.CTk):
         if failed_count > 0:
             self._log_error(f"Failed: {failed_count}")
         if result.failed_rows:
-                failed_str = ", ".join(map(str, result.failed_rows))
-                max_len = Constants.MAX_DISPLAY_STRING_LENGTH
-                if len(failed_str) > max_len:
-                    failed_str = failed_str[: max_len - 3] + "..."
-                self._log_error(f"Failed row numbers: {failed_str}")
+            self._log_error(f"Failed row numbers: {format_failed_rows_display(result.failed_rows)}")
 
         self.results_frame.update_results(
             rows_analyzed=result.total_rows,

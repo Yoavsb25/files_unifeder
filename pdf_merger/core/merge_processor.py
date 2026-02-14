@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
 logger = get_logger("pdf_merger.core.merge_processor")
 
+# Module-level aliases for readability in hot paths (see docs ARCHITECTURE Conventions).
 EXCEL_FILE_EXTENSIONS = Constants.EXCEL_FILE_EXTENSIONS
 BYTES_PER_MB = Constants.BYTES_PER_MB
 MAX_MISSING_TO_LIST = Constants.MAX_MISSING_TO_LIST
@@ -79,7 +80,7 @@ def process_row(row_index: int, serial_numbers_str: str, source_folder: Path,
     )
     if not pipeline.success and not pipeline.source_files:
         logger.warning(f"Row {row_index + 1}: No files found for any serial numbers, skipping...")
-    elif not pipeline.success and pipeline.error_message == "No PDF files available for merging":
+    elif not pipeline.success and pipeline.error_message == Constants.NO_PDF_AVAILABLE:
         logger.warning(f"Row {row_index + 1}: No PDF files to merge (conversions may have failed), skipping...")
     return pipeline.success
 
@@ -95,9 +96,9 @@ def _pipeline_result_to_row_result(
             row_index=row_index,
             status=RowStatus.SKIPPED,
             files_missing=pipeline.missing,
-            error_message=pipeline.error_message or "No source files found",
+            error_message=pipeline.error_message or Constants.NO_SOURCE_FILES,
         )
-    if pipeline.error_message == "No PDF files available for merging":
+    if pipeline.error_message == Constants.NO_PDF_AVAILABLE:
         return RowResult(
             row_index=row_index,
             status=RowStatus.FAILED,
@@ -120,7 +121,7 @@ def _pipeline_result_to_row_result(
         status=RowStatus.FAILED,
         files_found=pipeline.source_files,
         files_missing=pipeline.missing,
-        error_message=pipeline.error_message or "Failed to merge PDFs",
+        error_message=pipeline.error_message or Constants.MERGE_FAILED,
         processing_time=processing_time,
     )
 
@@ -220,6 +221,21 @@ def _progress_message_for_row_result(row_num: int, total_rows: int, row_result: 
     return lines
 
 
+def _record_job_failure(
+    result: MergeResult,
+    row_index: int,
+    start_time: float,
+    exception: Exception,
+    error_type: str,
+    metrics: "MetricsRecorder",
+) -> None:
+    """Record a job-level failure: set timing, log, record metric, and add a failed RowResult."""
+    result.total_processing_time = time.time() - start_time
+    logger.error(f"{error_type}: {exception}")
+    metrics.record_counter("jobs_failed", tags={"error_type": error_type})
+    result.add_row_result(RowResult.failed(row_index=row_index, error_message=str(exception)))
+
+
 def process_job(
     job: MergeJob,
     fail_on_ambiguous: bool = True,
@@ -255,10 +271,12 @@ def process_job(
     start_time = time.time()
     metrics = metrics_collector if metrics_collector is not None else get_metrics_collector()
     metrics.record_counter("jobs_started")
+    current_row_index = 0
 
     try:
         use_progress = on_progress is not None
         for idx, row in enumerate(job.rows):
+            current_row_index = row.row_index
             row_num = row.row_index + 1
 
             # Single row start message (avoids duplicate with process_row_with_models log)
@@ -290,22 +308,13 @@ def process_job(
         return result
         
     except PDFMergerError as e:
-        logger.error(f"PDF Merger error: {e}")
-        metrics.record_counter("jobs_failed", tags={"error_type": "PDFMergerError"})
-        result.total_processing_time = time.time() - start_time
-        result.add_row_result(RowResult.failed(row_index=row.row_index, error_message=str(e)))
+        _record_job_failure(result, current_row_index, start_time, e, "PDFMergerError", metrics)
         return result
     except ValueError as e:
-        logger.error(f"Ambiguous match error: {e}")
-        metrics.record_counter("jobs_failed", tags={"error_type": "AmbiguousMatch"})
-        result.total_processing_time = time.time() - start_time
-        result.add_row_result(RowResult.failed(row_index=row.row_index, error_message=str(e)))
+        _record_job_failure(result, current_row_index, start_time, e, "AmbiguousMatch", metrics)
         return result
     except Exception as e:
-        logger.error(f"Unexpected error processing job: {e}")
-        metrics.record_counter("jobs_failed", tags={"error_type": "UnexpectedError"})
-        result.total_processing_time = time.time() - start_time
-        result.add_row_result(RowResult.failed(row_index=row.row_index, error_message=str(e)))
+        _record_job_failure(result, current_row_index, start_time, e, "UnexpectedError", metrics)
         return result
 
 

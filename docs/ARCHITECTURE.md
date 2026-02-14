@@ -673,8 +673,11 @@ Import from the package root: `from pdf_merger import run_merge_job, load_config
 
 ### Conventions
 
+- **Constants**: All constants live in `pdf_merger.core.constants`, composed from domain modules (`*_constants.py` in `core/`). Application, config, and UI code use `Constants.*` directly. Core and operations modules may define a single block of module-level aliases at the top of the file (e.g. `EXCEL_FILE_EXTENSIONS = Constants.EXCEL_FILE_EXTENSIONS`) for readability in hot paths; do not mix both styles in the same logical block.
 - **Logging**: User-visible milestones (job start/end, row counts) use `logger.info`. Per-row detail (files found, convert messages) use `logger.debug` when a progress callback is active to avoid duplicate or out-of-order output.
 - **quiet flag**: When `on_progress` is provided, the processor passes `quiet=True` into the row pipeline and row-level logging is suppressed; the UI drives progress messages via the callback.
+- **Pipeline/result messages**: Canonical error messages for the row pipeline and result mapping live in `pdf_merger.core.pipeline_constants` (e.g. `NO_SOURCE_FILES`, `NO_PDF_AVAILABLE`, `MERGE_FAILED`). Use these constants instead of string literals when setting or comparing error messages.
+- **Tests**: UI unit tests live under `tests/unit/ui/`. Tkinter and CustomTkinter are mocked in `conftest.py` so no display is required. Component tests are in `test_components.py`.
 - **Legacy APIs**: `run_merge`, `process_file`, and `ProcessingResult` are kept for backward compatibility. New code should use `run_merge_job`, `process_job`/`process_row_with_models`, and `MergeResult`.
 
 ---

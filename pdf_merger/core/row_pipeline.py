@@ -15,6 +15,7 @@ from .constants import Constants
 
 logger = get_logger("pdf_merger.core.row_pipeline")
 
+# Module-level aliases for readability in hot paths (see docs ARCHITECTURE Conventions).
 EXCEL_FILE_EXTENSIONS = Constants.EXCEL_FILE_EXTENSIONS
 OUTPUT_FILENAME_PATTERN = Constants.OUTPUT_FILENAME_PATTERN
 
@@ -105,7 +106,7 @@ def run_row_pipeline(
             success=False,
             source_files=[],
             missing=missing,
-            error_message="No source files found",
+            error_message=Constants.NO_SOURCE_FILES,
         )
     temp_pdf_files: List[Path] = []
     try:
@@ -115,7 +116,7 @@ def run_row_pipeline(
                 success=False,
                 source_files=source_files,
                 missing=missing,
-                error_message="No PDF files available for merging",
+                error_message=Constants.NO_PDF_AVAILABLE,
             )
         output_filename = OUTPUT_FILENAME_PATTERN.format(row_index + 1)
         output_path = output_folder / output_filename
@@ -132,7 +133,7 @@ def run_row_pipeline(
             output_path=output_path if success else None,
             source_files=source_files,
             missing=missing,
-            error_message=None if success else "Failed to merge PDFs",
+            error_message=None if success else Constants.MERGE_FAILED,
         )
     finally:
         _cleanup_temp_files(temp_pdf_files, quiet=quiet)

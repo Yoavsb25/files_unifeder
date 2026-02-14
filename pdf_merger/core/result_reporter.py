@@ -4,7 +4,7 @@ Format processing results for UI display.
 Supports both legacy ProcessingResult and new MergeResult via ResultView abstraction.
 """
 
-from typing import Union
+from typing import List, Union
 from .result_types import ProcessingResult
 from ..models import MergeResult, RowStatus
 from .constants import Constants
@@ -16,6 +16,26 @@ logger = get_logger("pdf_merger.core.result_reporter")
 # Module-level constants
 MAX_DISPLAY_STRING_LENGTH = Constants.MAX_DISPLAY_STRING_LENGTH
 _SEPARATOR = "=" * 60
+
+
+def format_failed_rows_display(
+    failed_rows: List[int],
+    max_length: int = Constants.MAX_DISPLAY_STRING_LENGTH,
+) -> str:
+    """
+    Format failed row indices as a truncated string for display (e.g. "2, 5, 8" or "2, 5, 8, ...").
+
+    Args:
+        failed_rows: List of failed row indices (0-based or 1-based; displayed as-is).
+        max_length: Maximum string length before truncation with "...".
+
+    Returns:
+        Comma-separated string, truncated if over max_length.
+    """
+    failed_str = ", ".join(map(str, failed_rows))
+    if len(failed_str) > max_length:
+        failed_str = failed_str[: max_length - 3] + "..."
+    return failed_str
 
 
 def format_result_summary(result: Union[ProcessingResult, MergeResult]) -> str:
@@ -40,10 +60,7 @@ def format_result_summary(result: Union[ProcessingResult, MergeResult]) -> str:
     if view.skipped_rows:
         lines.append(f"Skipped rows: {len(view.skipped_rows)}")
     if view.failed_rows:
-        failed_str = ", ".join(map(str, view.failed_rows))
-        if len(failed_str) > MAX_DISPLAY_STRING_LENGTH:
-            failed_str = failed_str[: MAX_DISPLAY_STRING_LENGTH - 3] + "..."
-        lines.append(f"Failed row numbers: {failed_str}")
+        lines.append(f"Failed row numbers: {format_failed_rows_display(view.failed_rows)}")
     lines.append(_SEPARATOR)
     return "\n".join(lines)
 

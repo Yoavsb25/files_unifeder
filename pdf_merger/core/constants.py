@@ -9,6 +9,7 @@ from .license_constants import LicenseConstants
 from .pdf_operations_constants import PdfOperationsConstants
 from .excel_constants import ExcelConstants
 from .ui_constants import UiConstants
+from .pipeline_constants import PipelineConstants
 
 
 class Constants(
@@ -18,6 +19,7 @@ class Constants(
     PdfOperationsConstants,
     ExcelConstants,
     UiConstants,
+    PipelineConstants,
 ):
     """Configuration constants for PDF Merger (composed from domain modules)."""
     pass
