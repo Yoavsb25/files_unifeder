@@ -56,10 +56,10 @@ class AppConfig:
     
     @classmethod
     def from_dict(cls, data: dict) -> 'AppConfig':
-        """Create config from dictionary."""
+        """Create config from dictionary. Canonical key for source directory is pdf_dir; source_dir is accepted as alias."""
         return cls(
             input_file=data.get('input_file'),
-            pdf_dir=data.get('pdf_dir'),
+            pdf_dir=data.get('pdf_dir') or data.get('source_dir'),
             output_dir=data.get('output_dir'),
             required_column=data.get('required_column', Constants.DEFAULT_SERIAL_NUMBERS_COLUMN),
             metrics_enabled=data.get('metrics_enabled', True),

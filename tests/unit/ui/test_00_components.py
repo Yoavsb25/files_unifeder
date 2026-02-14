@@ -32,6 +32,8 @@ class MockCTkFrame:
         pass
     def pack_forget(self, *args, **kwargs):
         pass
+    def pack_propagate(self, *args, **kwargs):
+        pass
     def winfo_ismapped(self):
         return False
 
@@ -69,6 +71,8 @@ class MockCTkEntry:
     def configure(self, *args, **kwargs):
         pass
     def place(self, *args, **kwargs):
+        pass
+    def bind(self, *args, **kwargs):
         pass
 
 class MockCTkTextbox:

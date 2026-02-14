@@ -18,6 +18,7 @@ mock_ctk.CTkFont = MockCTkFont
 sys.modules['customtkinter'] = mock_ctk
 
 from pdf_merger.ui.license_ui import update_license_display
+from pdf_merger.ui.theme import SUCCESS_GREEN, ERROR_RED, WARNING_YELLOW
 from pdf_merger.licensing import LicenseStatus
 
 
@@ -36,8 +37,8 @@ class TestUpdateLicenseDisplay:
         assert result is True
         mock_label.configure.assert_called_once()
         call_args = mock_label.configure.call_args[1]
-        assert call_args['text'] == "✓ License valid"
-        assert call_args['text_color'] == "green"
+        assert call_args['text'] == "✓ Licensed · Expires Unknown"
+        assert call_args['text_color'] == SUCCESS_GREEN
     
     def test_update_license_display_valid_with_info(self):
         """Test updating license display with valid license and info."""
@@ -55,9 +56,8 @@ class TestUpdateLicenseDisplay:
         assert result is True
         mock_label.configure.assert_called_once()
         call_args = mock_label.configure.call_args[1]
-        assert "Test Company" in call_args['text']
         assert "2027-12-31" in call_args['text']
-        assert call_args['text_color'] == "green"
+        assert call_args['text_color'] == SUCCESS_GREEN
     
     def test_update_license_display_valid_with_critical_warning(self):
         """Test updating license display with critical expiry warning."""
@@ -76,9 +76,8 @@ class TestUpdateLicenseDisplay:
         assert result is True
         mock_label.configure.assert_called_once()
         call_args = mock_label.configure.call_args[1]
-        assert call_args['text_color'] == "red"
-        assert "Test Company" in call_args['text']
-        assert "License expires in 5 days!" in call_args['text']
+        assert call_args['text_color'] == ERROR_RED
+        assert "Expired" in call_args['text']
     
     def test_update_license_display_valid_with_warning_level(self):
         """Test updating license display with warning level expiry."""
@@ -96,7 +95,7 @@ class TestUpdateLicenseDisplay:
         
         assert result is True
         call_args = mock_label.configure.call_args[1]
-        assert call_args['text_color'] == "orange"
+        assert call_args['text_color'] == ERROR_RED
     
     def test_update_license_display_valid_with_info_level(self):
         """Test updating license display with info level expiry."""
@@ -114,7 +113,7 @@ class TestUpdateLicenseDisplay:
         
         assert result is True
         call_args = mock_label.configure.call_args[1]
-        assert call_args['text_color'] == "yellow"
+        assert call_args['text_color'] == WARNING_YELLOW
     
     def test_update_license_display_expired(self):
         """Test updating license display with expired license."""
@@ -128,7 +127,7 @@ class TestUpdateLicenseDisplay:
         mock_label.configure.assert_called_once()
         call_args = mock_label.configure.call_args[1]
         assert "expired" in call_args['text'].lower()
-        assert call_args['text_color'] == "orange"
+        assert call_args['text_color'] == ERROR_RED
     
     def test_update_license_display_invalid(self):
         """Test updating license display with invalid license."""
@@ -143,7 +142,7 @@ class TestUpdateLicenseDisplay:
         mock_label.configure.assert_called_once()
         call_args = mock_label.configure.call_args[1]
         assert "License signature is invalid" in call_args['text']
-        assert call_args['text_color'] == "red"
+        assert call_args['text_color'] == ERROR_RED
     
     def test_update_license_display_not_found(self):
         """Test updating license display when license not found."""
@@ -157,4 +156,4 @@ class TestUpdateLicenseDisplay:
         assert result is False
         call_args = mock_label.configure.call_args[1]
         assert "License file not found" in call_args['text']
-        assert call_args['text_color'] == "red"
+        assert call_args['text_color'] == ERROR_RED

@@ -261,12 +261,10 @@ class PDFMergerApp(ctk.CTk):
         self.column_entry.insert(0, self.config.required_column)
 
         def validate_input(p: Path) -> None:
-            if p.exists():
-                validate_file(p, required_column=self.config.required_column)
+            validate_file(p, required_column=self.config.required_column)
 
         def validate_source(p: Path) -> None:
-            if p.exists():
-                validate_folder(p, "Source")
+            validate_folder(p, "Source")
 
         def validate_output(p: Path) -> None:
             p.mkdir(parents=True, exist_ok=True)

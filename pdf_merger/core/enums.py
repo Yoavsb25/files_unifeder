@@ -41,32 +41,15 @@ class MatchBehavior(Enum):
     LOG_ALL = "log_all"
 
 
-# RowStatus moved to pdf_merger.models.enums (domain layer). Re-export for backward compatibility.
-from ..models import RowStatus  # noqa: F401
-
-class LicenseColor(Enum):
-    """License status colors for UI display."""
-    GREEN = "green"
-    RED = "red"
-    ORANGE = "orange"
-    YELLOW = "yellow"
-
+# RowStatus is owned by the domain layer: use pdf_merger.models.RowStatus.
+# LicenseColor and StatusColor moved to pdf_merger.ui.display_enums (UI-only).
 
 class WarningLevel(Enum):
-    """License expiry warning levels."""
+    """License expiry warning levels (used by licensing and UI)."""
     EXPIRED = "expired"
     CRITICAL = "critical"
     WARNING = "warning"
     INFO = "info"
-
-
-class StatusColor(Enum):
-    """Status colors for UI components (footer, etc.)."""
-    WHITE = "white"
-    GREEN = "green"
-    RED = "red"
-    ORANGE = "orange"
-    BLUE = "blue"
 
 
 class PageOrientation(Enum):

@@ -27,7 +27,7 @@ class TestMergeJob:
         assert job.input_file == input_file
         assert job.source_folder == source_folder
         assert job.output_folder == output_folder
-        assert job.required_column == Constants.GOLDFARB_SERIAL_NUMBER_COLUMN
+        assert job.required_column == Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
         assert len(job.rows) == 0
         assert job.job_id is None
         assert job.metadata == {}

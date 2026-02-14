@@ -316,6 +316,7 @@ class TestPDFMergerApp:
             pdf_dir=app.pdf_dir_path,
             output_dir=app.output_dir_path,
             required_column="Document ID",
+            fail_on_ambiguous_matches=app.config.fail_on_ambiguous_matches,
         )
     
     def test_run_merge_invalid_license(self):

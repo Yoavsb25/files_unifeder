@@ -12,7 +12,8 @@ from typing import Optional
 import customtkinter as ctk
 
 from ..licensing import LicenseManager, LicenseStatus
-from ..core.enums import LicenseColor, WarningLevel
+from ..core.enums import WarningLevel
+from .display_enums import LicenseColor
 
 from .theme import SUCCESS_GREEN, ERROR_RED, WARNING_YELLOW
 

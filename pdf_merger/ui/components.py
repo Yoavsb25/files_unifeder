@@ -6,7 +6,7 @@ import customtkinter as ctk
 from typing import Any, Callable, Optional, Union
 
 from .. import APP_VERSION, APP_NAME
-from ..core.enums import StatusColor
+from .display_enums import StatusColor
 from .theme import (
     CARD_BG,
     CARD_BORDER,

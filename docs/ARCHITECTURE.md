@@ -174,14 +174,17 @@ files_unifeder/
 │   │   ├── config_manager.py    # Configuration loading with precedence (env > user config > preset > defaults)
 │   │   └── config_schema.py     # Schema and validation
 │   │
-│   ├── core/                    # Business logic and orchestration
+│   ├── core/                    # Business logic and orchestration (see Core package boundaries below)
 │   │   ├── merge_orchestrator.py  # UI-facing API, job construction, row loading (orchestrator)
 │   │   ├── merge_processor.py    # Job execution and row-level logic (processor)
-│   │   ├── constants.py         # Shared constants
+│   │   ├── row_pipeline.py      # One-row pipeline: find, convert Excel, merge, cleanup
+│   │   ├── constants.py         # Shared constants (composed from domain constant modules)
 │   │   ├── csv_excel_reader.py  # CSV/Excel file reading
 │   │   ├── serial_number_parser.py  # Serial number parsing
 │   │   ├── result_reporter.py   # Result formatting
-│   │   └── enums.py             # Shared enums
+│   │   ├── result_view.py       # Unified result view for formatters
+│   │   ├── result_types.py     # Legacy ProcessingResult and adapter
+│   │   └── enums.py             # Domain/operations enums (UI display enums in ui/display_enums.py)
 │   │
 │   ├── models/                  # Domain models
 │   │   ├── row.py               # Row data model
@@ -212,6 +215,7 @@ files_unifeder/
 │   │   ├── app.py               # CustomTkinter GUI application
 │   │   ├── handlers.py          # Event handlers (merge, file selection)
 │   │   ├── components.py       # Reusable UI components
+│   │   ├── display_enums.py    # UI-only enums (StatusColor, LicenseColor)
 │   │   ├── theme.py             # Theme and styling
 │   │   ├── license_ui.py        # License display helpers
 │   │   └── __init__.py
@@ -238,6 +242,12 @@ files_unifeder/
 │
 └── requirements.txt             # Python dependencies
 ```
+
+### Core package boundaries
+
+- **core**: Workflow, row loading, and result formatting. Contains the orchestrator (UI-facing API, job construction), processor (job execution, row-level logic), row pipeline (find/convert/merge for one row), result reporter and result view, constants, enums (domain/operations only), CSV/Excel reader, and serial number parser. Does not perform file-format operations (PDF merge, Excel→PDF); those live in **operations**.
+- **operations**: File-format operations only (PDF finding/merging, streaming merge, Excel-to-PDF conversion). Used by core (processor, row_pipeline) but does not depend on core.
+- **result_types** and **result_view** live in core; they provide the legacy ProcessingResult and the unified ResultView for formatters.
 
 ### Core Components
 
@@ -648,6 +658,24 @@ This section provides comprehensive mermaid diagrams explaining the code structu
 11. **Cross-Platform**: Handles platform differences (case sensitivity, Unicode, long paths)
 12. **Privacy-First**: All observability features are opt-in with anonymization
 13. **Public API**: External code and integrations should use only symbols exported from the `pdf_merger` package root (`__all__` in `pdf_merger/__init__.py`); internal modules may change without notice.
+
+### Public API (stable entry points)
+
+**External code and integrations must use only the following.** All other modules are internal and may change without notice.
+
+- **Entry points**: `run_merge`, `run_merge_job` — run merge operations (prefer `run_merge_job` with domain models).
+- **Configuration**: `load_config`, `AppConfig` — load and represent application configuration.
+- **Result types**: `MergeResult`, `ProcessingResult` — result types from merge runs (`MergeResult` preferred).
+- **Errors**: `PDFMergerError` — base exception for error handling.
+- **Package metadata**: `APP_VERSION`, `APP_NAME` — version and display name.
+
+Import from the package root: `from pdf_merger import run_merge_job, load_config, AppConfig, MergeResult, PDFMergerError`.
+
+### Conventions
+
+- **Logging**: User-visible milestones (job start/end, row counts) use `logger.info`. Per-row detail (files found, convert messages) use `logger.debug` when a progress callback is active to avoid duplicate or out-of-order output.
+- **quiet flag**: When `on_progress` is provided, the processor passes `quiet=True` into the row pipeline and row-level logging is suppressed; the UI drives progress messages via the callback.
+- **Legacy APIs**: `run_merge`, `process_file`, and `ProcessingResult` are kept for backward compatibility. New code should use `run_merge_job`, `process_job`/`process_row_with_models`, and `MergeResult`.
 
 ---
 
@@ -1140,9 +1168,9 @@ Enhanced Excel to PDF conversion with professional rendering:
 
 ## Version
 
-Current version: **1.1.0**
+Current version: **1.0.0** (single source of truth: `pdf_merger.__version__` in `pdf_merger/__init__.py`).
 
-### Recent Changes (v1.1.0)
+### Recent Changes (v1.0.0)
 
 **Major Enhancements:**
 - **Configuration Management**: Multi-source configuration with precedence (env vars > config > presets > defaults)

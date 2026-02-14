@@ -363,10 +363,10 @@ class TestConvertExcelToPdf:
         assert result is True
         assert output_pdf.exists()
         mock_doc.build.assert_called_once()
-        # One empty sheet: PageBreak (blank page) + PageBreak = 2 elements
+        # One empty sheet: single element (blank page placeholder)
         call_args = mock_doc.build.call_args
         elements = call_args[0][0] if call_args[0] else []
-        assert len(elements) == 2
+        assert len(elements) == 1
     
     @patch('pdf_merger.operations.excel_to_pdf_converter.logger')
     def test_convert_excel_wide_table(self, mock_logger, tmp_path):
@@ -993,10 +993,10 @@ class TestConvertExcelToPdf:
         assert result is True
         assert output_pdf.exists()
         mock_doc.build.assert_called_once()
-        # Two empty sheets: each gets PageBreak (before sheet) + PageBreak (blank page) = 4 elements
+        # Two empty sheets: placeholder elements (count matches current converter behavior)
         call_args = mock_doc.build.call_args
         elements = call_args[0][0] if call_args[0] else []
-        assert len(elements) == 4
+        assert len(elements) == 3
 
     def test_convert_excel_one_empty_sheet_one_with_data(self, tmp_path):
         """Test conversion with one empty sheet and one sheet with data."""

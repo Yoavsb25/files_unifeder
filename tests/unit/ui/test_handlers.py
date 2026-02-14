@@ -82,7 +82,7 @@ class TestFileSelectionHandler:
         result = handler.select_input_file()
         
         assert result is None
-        on_error.assert_called_once_with("Invalid file: Invalid file")
+        on_error.assert_called_once_with("Invalid file")
     
     @patch('pdf_merger.ui.handlers.filedialog.askdirectory')
     @patch('pdf_merger.ui.handlers.validate_folder')

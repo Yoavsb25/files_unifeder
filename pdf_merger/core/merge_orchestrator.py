@@ -12,8 +12,7 @@ add UI-facing API or row loading from file here.
 from pathlib import Path
 from typing import Optional
 
-from .merge_processor import process_file, process_job
-from .result_types import ProcessingResult
+from .merge_processor import process_job
 from .types import ProgressCallback, PROGRESS_LOADING
 from ..models import MergeJob, MergeResult, Row
 from .csv_excel_reader import read_data_file
@@ -29,12 +28,12 @@ def run_merge(
     output_dir: Path,
     required_column: Optional[str] = None,
     on_progress: Optional[ProgressCallback] = None,
-) -> ProcessingResult:
+) -> MergeResult:
     """
-    Run the merge operation (legacy interface).
+    Run the merge operation (legacy entry point; same pipeline as run_merge_job).
 
-    Note: This function is kept for backward compatibility.
-    New code should use run_merge_job() with domain models.
+    Prefer run_merge_job() for new code. This function delegates to run_merge_job and returns
+    MergeResult. For legacy ProcessingResult, use as_processing_result(result) from core.result_types.
 
     Args:
         input_file: Path to CSV or Excel file
@@ -44,33 +43,16 @@ def run_merge(
         on_progress: Optional callback (step, current, total, message) for progress updates
 
     Returns:
-        ProcessingResult with statistics
+        MergeResult with detailed processing results
     """
     column = required_column or Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
-
-    logger.info(f"Starting merge operation")
-    logger.info(f"  Input file: {input_file}")
-    logger.info(f"  Source directory: {pdf_dir}")
-    logger.info(f"  Output directory: {output_dir}")
-
-    try:
-        result = process_file(
-            file_path=input_file,
-            source_folder=pdf_dir,
-            output_folder=output_dir,
-            required_column=column,
-            on_progress=on_progress,
-        )
-        
-        logger.info(f"Merge operation completed")
-        logger.info(f"  Total rows: {result.total_rows}")
-        logger.info(f"  Successful: {result.successful_merges}")
-        logger.info(f"  Failed: {len(result.failed_rows)}")
-        
-        return result
-    except Exception as e:
-        logger.error(f"Error during merge operation: {e}")
-        raise
+    return run_merge_job(
+        input_file=input_file,
+        pdf_dir=pdf_dir,
+        output_dir=output_dir,
+        required_column=column,
+        on_progress=on_progress,
+    )
 
 
 def run_merge_job(
