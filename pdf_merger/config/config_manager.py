@@ -18,7 +18,7 @@ from typing import Optional, Dict, Any
 
 from ..core.constants import Constants
 from ..utils.logging_utils import get_logger
-from .config_schema import ConfigSchema
+from .config_schema import validate_config
 
 logger = get_logger("pdf_merger.config.config_manager")
 # Environment variable names
@@ -189,7 +189,8 @@ def load_project_preset(start_path: Optional[Path] = None) -> Optional[AppConfig
     try:
         with open(preset_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        config = AppConfig.from_dict(data)
+        validated_data = validate_config(data)
+        config = AppConfig.from_dict(validated_data)
         logger.info(f"Loaded project preset from {preset_path}")
         return config
     except Exception as e:
@@ -214,7 +215,7 @@ def load_user_config() -> AppConfig:
         with open(config_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         # Validate config
-        validated_data = ConfigSchema.validate_config(data)
+        validated_data = validate_config(data)
         config = AppConfig.from_dict(validated_data)
         logger.info(f"Loaded user config from {config_path}")
         return config
@@ -247,7 +248,7 @@ def load_env_config() -> AppConfig:
     if config_data:
         logger.debug("Loaded configuration from environment variables")
         # Validate config
-        validated_data = ConfigSchema.validate_config(config_data)
+        validated_data = validate_config(config_data)
         return AppConfig.from_dict(validated_data)
     
     return AppConfig()

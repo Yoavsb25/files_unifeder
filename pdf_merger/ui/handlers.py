@@ -18,6 +18,10 @@ from ..utils.logging_utils import get_logger
 
 logger = get_logger("pdf_merger.ui.handlers")
 
+# MergeHandler state: single source of truth for "is a merge running"
+_STATE_IDLE = "idle"
+_STATE_RUNNING = "running"
+
 
 class FileSelectionHandler:
     """Handler for file and directory selection. Validation errors use (field_id, message) with field_id one of FIELD_*."""
@@ -109,11 +113,9 @@ class FileSelectionHandler:
 class MergeHandler:
     """Handler for merge operations.
 
-    The public flag is_processing must be reset in both success and error paths
-    (in finally and in completion callbacks) so the UI correctly reflects
-    "processing" state. UI updates from the worker thread must use thread-safe
-    means (e.g. root.after()) when updating widgets; the app schedules progress
-    and completion callbacks on the main thread accordingly.
+    Merge state is encapsulated: only _set_idle() and run_merge() transition state.
+    UI reads is_processing (property). Worker must call _set_idle() in finally so
+    the UI always reflects idle when the thread completes.
     """
 
     def __init__(
@@ -127,7 +129,18 @@ class MergeHandler:
         self.on_complete = on_complete
         self.on_error = on_error
         self.on_progress = on_progress
-        self.is_processing = False
+        self._state = _STATE_IDLE
+        self._job_id: Optional[str] = None
+
+    @property
+    def is_processing(self) -> bool:
+        """True if a merge is currently running. Read-only; set only via _set_idle() and run_merge()."""
+        return self._state == _STATE_RUNNING
+
+    def _set_idle(self) -> None:
+        """Transition to idle. Called from worker finally and ensures UI can re-enable Run Merge."""
+        self._state = _STATE_IDLE
+        self._job_id = None
 
     def run_merge(
         self,
@@ -146,12 +159,12 @@ class MergeHandler:
                 self.on_error("Please select all required files and directories.")
             return
 
-        self.is_processing = True
+        self._state = _STATE_RUNNING
+        self._job_id = str(id(self))
 
         if self.on_start:
             self.on_start()
 
-        # Run in separate thread
         thread = threading.Thread(
             target=self._merge_worker,
             args=(input_file, pdf_dir, output_dir, required_column, fail_on_ambiguous_matches),
@@ -186,8 +199,7 @@ class MergeHandler:
             if self.on_error:
                 self.on_error(error_msg)
         finally:
-            # Reset processing state - callbacks will handle UI updates
-            self.is_processing = False
+            self._set_idle()
     
     def format_result(self, result: MergeResult) -> str:
         """Format merge result as a summary string."""

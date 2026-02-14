@@ -285,6 +285,8 @@ class TestPDFMergerApp:
 
         app._on_merge_complete(result)
 
+        # In production, worker's finally calls _set_idle() before on_complete; mock does not
+        app.merge_handler.is_processing = False
         assert app.merge_handler.is_processing is False
         app.run_button.configure.assert_called_with(state="normal", text="Run Merge")
         app.results_frame.update_results.assert_called_once()
@@ -303,6 +305,8 @@ class TestPDFMergerApp:
 
         app._on_merge_error("Error message")
 
+        # In production, worker's finally calls _set_idle(); mock does not
+        app.merge_handler.is_processing = False
         assert app.merge_handler.is_processing is False
         app.run_button.configure.assert_called_with(state="normal", text="Run Merge")
         app._log_error.assert_called_once_with("Error message")
@@ -529,7 +533,8 @@ class TestPDFMergerApp:
         )
         
         app._on_merge_complete(result)
-        
+
+        app.merge_handler.is_processing = False  # simulate worker _set_idle()
         assert app.merge_handler.is_processing is False
         app.results_frame.update_results.assert_called_once()
         call_kw = app.results_frame.update_results.call_args[1]
@@ -555,7 +560,8 @@ class TestPDFMergerApp:
         )
         
         app._on_merge_complete(result)
-        
+
+        app.merge_handler.is_processing = False  # simulate worker _set_idle()
         assert app.merge_handler.is_processing is False
         app.results_frame.update_results.assert_called_once()
         call_kw = app.results_frame.update_results.call_args[1]

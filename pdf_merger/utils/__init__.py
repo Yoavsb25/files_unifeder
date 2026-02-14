@@ -8,8 +8,9 @@ from .path_utils import (
     compare_paths,
     resolve_path,
     is_long_path,
-    enable_long_paths_windows
+    enable_long_paths_windows,
 )
+from .exceptions import PDFMergerError, PDFMergerFileNotFoundError
 
 __all__ = [
     'normalize_path',
@@ -17,4 +18,6 @@ __all__ = [
     'resolve_path',
     'is_long_path',
     'enable_long_paths_windows',
+    'PDFMergerError',
+    'PDFMergerFileNotFoundError',
 ]

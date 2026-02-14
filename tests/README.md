@@ -275,7 +275,7 @@ Tests for main processing logic:
 
 Tests for custom exception classes:
 - `PDFMergerError` - Base exception class
-- `FileNotFoundError` - File/folder not found
+- `PDFMergerFileNotFoundError` - File/folder not found
 - `InvalidFileFormatError` - Invalid file format
 - `MissingColumnError` - Missing required column
 - `PDFProcessingError` - PDF operation failures

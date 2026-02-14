@@ -28,18 +28,18 @@ class PDFMergerError(Exception):
         super().__init__(self.message)
 
 
-class FileNotFoundError(PDFMergerError):
+class PDFMergerFileNotFoundError(PDFMergerError):
     """
     Raised when a required file or folder is not found.
-    
-    This exception provides detailed information about what file or folder
-    was expected but not found.
+
+    Named to avoid shadowing the built-in FileNotFoundError.
+    Provides detailed information about what file or folder was expected but not found.
     """
-    
+
     def __init__(self, path: Path, file_type: str = "File"):
         """
-        Initialize FileNotFoundError.
-        
+        Initialize PDFMergerFileNotFoundError.
+
         Args:
             path: Path to the file or folder that was not found
             file_type: Type description (e.g., "File", "Folder", "Source folder")

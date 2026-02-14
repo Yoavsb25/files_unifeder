@@ -12,7 +12,7 @@ import sys
 sys.modules['tkinter'] = MagicMock()
 sys.modules['tkinter.filedialog'] = MagicMock()
 
-from pdf_merger.ui.handlers import FileSelectionHandler, MergeHandler
+from pdf_merger.ui.handlers import FileSelectionHandler, MergeHandler, _STATE_RUNNING
 from pdf_merger.models import MergeResult
 from pdf_merger.utils.exceptions import PDFMergerError
 
@@ -196,15 +196,15 @@ class TestMergeHandler:
     def test_run_merge_already_processing(self):
         """Test running merge when already processing."""
         handler = MergeHandler()
-        handler.is_processing = True
-        
+        handler._state = _STATE_RUNNING
+
         handler.run_merge(
             input_file=Path("/test.csv"),
             pdf_dir=Path("/pdfs"),
             output_dir=Path("/output")
         )
-        
-        # Should not start another merge
+
+        # Should not start another merge (state unchanged)
         assert handler.is_processing is True
     
     @patch('pdf_merger.ui.handlers.run_merge_job')

@@ -500,21 +500,26 @@ class TestLoadProjectPreset:
     """Test cases for load_project_preset function."""
     
     def test_load_project_preset_success(self, tmp_path):
-        """Test successfully loading project preset."""
+        """Test successfully loading project preset (paths are validated)."""
         from pdf_merger.config.config_manager import load_project_preset
-        
+
+        input_file = tmp_path / "input.csv"
+        pdf_dir = tmp_path / "pdfs"
+        input_file.write_text("serial_numbers\nGRNW_1")
+        pdf_dir.mkdir()
+
         preset_file = tmp_path / ".pdf_merger_config.json"
         preset_data = {
-            'input_file': '/project/input.csv',
-            'pdf_dir': '/project/pdfs'
+            'input_file': str(input_file),
+            'pdf_dir': str(pdf_dir),
         }
         preset_file.write_text(json.dumps(preset_data))
-        
+
         result = load_project_preset(tmp_path)
-        
+
         assert result is not None
-        assert result.input_file == '/project/input.csv'
-        assert result.pdf_dir == '/project/pdfs'
+        assert result.input_file == str(input_file.resolve())
+        assert result.pdf_dir == str(pdf_dir.resolve())
     
     def test_load_project_preset_not_found(self, tmp_path):
         """Test loading preset when not found."""

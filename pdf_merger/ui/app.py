@@ -35,6 +35,11 @@ from .theme import (
     INPUT_BACKGROUND,
     PRIMARY_BLUE,
     PRIMARY_BLUE_HOVER,
+    WINDOW_SIZE_DEFAULT,
+    WINDOW_MIN_SIZE,
+    PROGRESS_KEYWORD_SUCCESS,
+    PROGRESS_KEYWORD_SKIPPED,
+    PROGRESS_KEYWORD_FAILED,
 )
 # Setup logging
 setup_logger("pdf_merger", level=20)
@@ -54,8 +59,8 @@ class PDFMergerApp(ctk.CTk):
         super().__init__()
         
         self.title(APP_NAME)
-        self.geometry("1020x800")
-        self.minsize(620, 500)
+        self.geometry(WINDOW_SIZE_DEFAULT)
+        self.minsize(*WINDOW_MIN_SIZE)
         self.configure(fg_color=APP_BACKGROUND)
         
         # If license_manager is provided, the app does not re-validate at startup (main passes it in after validation).
@@ -438,9 +443,9 @@ class PDFMergerApp(ctk.CTk):
             return
         # Map keywords to log method for processing step
         log_by_keyword = [
-            ("Success", self._log_success),
-            ("Skipped", self._log_warning),
-            ("Failed", self._log_error),
+            (PROGRESS_KEYWORD_SUCCESS, self._log_success),
+            (PROGRESS_KEYWORD_SKIPPED, self._log_warning),
+            (PROGRESS_KEYWORD_FAILED, self._log_error),
         ]
         for keyword, log_fn in log_by_keyword:
             if keyword in message:
@@ -488,7 +493,6 @@ class PDFMergerApp(ctk.CTk):
     
     def _on_merge_complete(self, result: MergeResult):
         """Handle merge completion - accurate Rows Analyzed, PDFs Created, Skipped, Failed."""
-        self.merge_handler.is_processing = False
         self.run_button.configure(state="normal", text="Run Merge")
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
@@ -518,7 +522,6 @@ class PDFMergerApp(ctk.CTk):
     
     def _on_merge_error(self, error_message: str):
         """Handle merge error."""
-        self.merge_handler.is_processing = False
         self.run_button.configure(state="normal", text="Run Merge")
         self.progress_bar.stop()
         self.progress_bar.pack_forget()

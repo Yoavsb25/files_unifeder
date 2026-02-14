@@ -684,6 +684,13 @@ Import from the package root: `from pdf_merger import run_merge_job, load_config
 
 ## Technical Details
 
+### Concurrency
+
+Merge runs **one job at a time**. There is no job queue, no cancellation of an in-flight merge, and no concurrent execution of multiple merge jobs. The UI disables "Run Merge" while a job is running and re-enables it when the worker thread completes (success or error).
+
+- **Single worker thread**: The merge operation runs in a single background thread (`MergeHandler._merge_worker`). UI updates from that thread are scheduled on the main thread via `root.after()`.
+- **Future extension**: To support cancellation or multiple jobs, introduce a job token or a small job queue and have the worker check the token or dequeue the next job; document the extension point here.
+
 ### Excel to PDF Conversion
 
 The Excel converter uses a two-step process:

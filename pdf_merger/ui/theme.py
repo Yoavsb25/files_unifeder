@@ -46,6 +46,15 @@ METRIC_CARD_BG = "#242424"
 # Step symbols for setup cards (Instructions File, Source Directory, Output Directory)
 STEP_SYMBOLS = ("①", "②", "③")
 
+# Window
+WINDOW_SIZE_DEFAULT = "1020x800"
+WINDOW_MIN_SIZE = (620, 500)
+
+# Progress message keywords (for mapping log level in _on_merge_progress)
+PROGRESS_KEYWORD_SUCCESS = "Success"
+PROGRESS_KEYWORD_SKIPPED = "Skipped"
+PROGRESS_KEYWORD_FAILED = "Failed"
+
 # Typography
 FONT_TITLE_SIZE = 28
 FONT_SECTION_SIZE = 18
