@@ -13,16 +13,14 @@ Validation Strategy:
 """
 
 from pathlib import Path
+
 from .logging_utils import get_logger
 from .exceptions import MissingColumnError, PDFMergerFileNotFoundError, ValidationError, InvalidFileFormatError
-from ..core.constants import Constants
-from ..core.csv_excel_reader import get_file_columns
+from .serial_number_parser import SERIAL_NUMBER_PREFIX, SERIAL_NUMBER_PREFIX_LOWER
+from .column_reader import get_file_columns
+from ..models.defaults import DEFAULT_SERIAL_NUMBERS_COLUMN
 
 logger = get_logger("pdf_merger.utils.validators")
-
-# Module-level constants (single source: core.constants.Constants)
-SERIAL_NUMBER_PREFIX = Constants.SERIAL_NUMBER_PREFIX
-SERIAL_NUMBER_PREFIX_LOWER = Constants.SERIAL_NUMBER_PREFIX_LOWER
 
 def validate_serial_number(serial_number: str) -> bool:
     """
@@ -37,7 +35,7 @@ def validate_serial_number(serial_number: str) -> bool:
     if not serial_number or not serial_number.strip():
         return False
 
-    if not serial_number.startswith(SERIAL_NUMBER_PREFIX) and not serial_number.startswith(SERIAL_NUMBER_PREFIX_LOWER):
+    if not serial_number.strip().startswith(SERIAL_NUMBER_PREFIX) and not serial_number.strip().startswith(SERIAL_NUMBER_PREFIX_LOWER):
         return False
 
     suffix = serial_number.split('_', 1)[-1]
@@ -67,7 +65,7 @@ def validate_folder(folder_path: Path, folder_type: str = "Folder") -> None:
         raise PDFMergerFileNotFoundError(folder_path, file_type=f"{folder_type} (not a directory)")
 
 
-def validate_file(file_path: Path, required_column: str = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
+def validate_file(file_path: Path, required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
     """
     Validate that a data file exists and has the required column.
     
@@ -99,7 +97,7 @@ def validate_file(file_path: Path, required_column: str = Constants.DEFAULT_SERI
 
 
 def validate_paths(file_path: Path, source_folder: Path, output_folder: Path,
-                   required_column: str = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
+                   required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN) -> None:
     """
     Validate all paths needed for processing.
     

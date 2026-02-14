@@ -7,12 +7,25 @@ import sys
 import os
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Protocol, runtime_checkable
 
 from ..utils.logging_utils import get_logger
 from ..core.constants import Constants
 
 logger = get_logger("pdf_merger.operations.pdf_merger")
+
+
+@runtime_checkable
+class PDFMergeBackend(Protocol):
+    """
+    Protocol for merging PDFs. Implement this to inject a custom or mock backend (e.g. in tests).
+    The default implementation is merge_pdfs() in this module.
+    """
+
+    def merge(self, pdf_paths: List[Path], output_path: Path) -> bool:
+        """Merge pdf_paths into a single PDF at output_path. Return True on success, False on failure."""
+        ...
+
 
 # Module-level constants
 PDF_FILE_EXTENSION = Constants.PDF_FILE_EXTENSION

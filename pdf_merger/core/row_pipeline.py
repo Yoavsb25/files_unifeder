@@ -6,12 +6,16 @@ Single responsibility for one-row processing; merge_processor orchestrates rows 
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 from ..operations.pdf_merger import find_source_file, merge_pdfs
-from ..operations.excel_to_pdf_converter import convert_excel_to_pdf
 from ..utils.logging_utils import get_logger
 from .constants import Constants
+
+if TYPE_CHECKING:
+    from ..operations.pdf_merger import PDFMergeBackend
+
+from ..operations.excel_to_pdf_converter import convert_excel_to_pdf
 
 logger = get_logger("pdf_merger.core.row_pipeline")
 
@@ -83,11 +87,13 @@ def run_row_pipeline(
     output_folder: Path,
     fail_on_ambiguous: bool = False,
     quiet: bool = False,
+    pdf_merge_backend: Optional["PDFMergeBackend"] = None,
 ) -> RowPipelineResult:
     """
     Find source files, convert Excel to PDF, merge, cleanup for one row.
     Caller is responsible for parsing/validation and mapping to RowResult or legacy bool.
     May raise ValueError on ambiguous match when fail_on_ambiguous is True.
+    When pdf_merge_backend is provided, it is used instead of the default merge_pdfs (e.g. for tests or alternate backends).
     """
     source_files: List[Path] = []
     missing: List[str] = []
@@ -122,7 +128,10 @@ def run_row_pipeline(
         output_path = output_folder / output_filename
         if not quiet:
             logger.info(f"  Merging {len(pdf_paths)} file(s) into {output_filename}...")
-        success = merge_pdfs(pdf_paths, output_path)
+        if pdf_merge_backend is not None:
+            success = pdf_merge_backend.merge(pdf_paths, output_path)
+        else:
+            success = merge_pdfs(pdf_paths, output_path)
         if not quiet:
             if success:
                 logger.info(f"  ✓ Successfully created {output_filename}")

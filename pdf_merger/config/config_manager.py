@@ -16,7 +16,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from ..core.constants import Constants
+from ..models.defaults import DEFAULT_SERIAL_NUMBERS_COLUMN
 from ..utils.logging_utils import get_logger
 from .config_schema import validate_config
 
@@ -32,8 +32,8 @@ PROJECT_PRESET_FILENAME = '.pdf_merger_config.json'
 
 
 def resolve_required_column(ui_value: Optional[str], config_value: Optional[str]) -> str:
-    """Resolve serial numbers column: UI value overrides config, then Constants default. Use in UI and handlers."""
-    return (ui_value or config_value or Constants.DEFAULT_SERIAL_NUMBERS_COLUMN).strip() or Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+    """Resolve serial numbers column: UI value overrides config, then model default. Use in UI and handlers."""
+    return (ui_value or config_value or DEFAULT_SERIAL_NUMBERS_COLUMN).strip() or DEFAULT_SERIAL_NUMBERS_COLUMN
 
 
 @dataclass
@@ -42,7 +42,7 @@ class AppConfig:
     input_file: Optional[str] = None
     pdf_dir: Optional[str] = None
     output_dir: Optional[str] = None
-    required_column: str = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+    required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN
     # Observability settings (intentional defaults: metrics on for diagnostics, telemetry off for privacy)
     metrics_enabled: bool = True
     telemetry_enabled: bool = False
@@ -61,7 +61,7 @@ class AppConfig:
             input_file=data.get('input_file'),
             pdf_dir=data.get('pdf_dir') or data.get('source_dir'),
             output_dir=data.get('output_dir'),
-            required_column=data.get('required_column', Constants.DEFAULT_SERIAL_NUMBERS_COLUMN),
+            required_column=data.get('required_column', DEFAULT_SERIAL_NUMBERS_COLUMN),
             metrics_enabled=data.get('metrics_enabled', True),
             telemetry_enabled=data.get('telemetry_enabled', False),
             crash_reporting_enabled=data.get('crash_reporting_enabled', False),
@@ -85,7 +85,7 @@ class AppConfig:
         Resolve required_column when merging: use other's value unless it is the
         default and self has a non-default override (other overrides self in all other cases).
         """
-        if other.required_column != Constants.DEFAULT_SERIAL_NUMBERS_COLUMN:
+        if other.required_column != DEFAULT_SERIAL_NUMBERS_COLUMN:
             return other.required_column
         return self.required_column
 

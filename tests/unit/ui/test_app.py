@@ -9,8 +9,10 @@ from unittest.mock import patch, MagicMock, call, Mock
 
 from pdf_merger.ui.app import PDFMergerApp, run_gui
 from pdf_merger.ui.components import LogHandler
+from pdf_merger.ui.theme import MESSAGE_PROCESSING_COMPLETE
 from pdf_merger.licensing import LicenseStatus
 from pdf_merger.models import MergeResult
+from pdf_merger.core import format_failed_rows_display
 
 
 class TestPDFMergerApp:
@@ -567,6 +569,43 @@ class TestPDFMergerApp:
         call_kw = app.results_frame.update_results.call_args[1]
         assert call_kw["pdfs_created"] == 0
         assert call_kw["failed"] == 5
+
+    def test_apply_merge_result_to_ui(self):
+        """Given a MergeResult, _apply_merge_result_to_ui produces expected log lines and results frame values."""
+        app = self._create_mock_app()
+        app._log = MagicMock()
+        app._log_info = MagicMock()
+        app._log_warning = MagicMock()
+        app._log_error = MagicMock()
+        app.output_dir_path = Path("/out")
+
+        result = MergeResult(
+            total_rows=10,
+            successful_merges=6,
+            failed_rows=[2, 5],
+            skipped_rows=[0, 9],
+        )
+
+        app._apply_merge_result_to_ui(result)
+
+        app._log.assert_any_call("")
+        app._log_info.assert_any_call(MESSAGE_PROCESSING_COMPLETE)
+        app._log_info.assert_any_call("Rows analyzed: 10")
+        app._log_info.assert_any_call("PDFs created: 6")
+        app._log_warning.assert_called_once_with("Skipped: 2")
+        app._log_error.assert_any_call("Failed: 2")
+        app._log_error.assert_any_call(
+            f"Failed row numbers: {format_failed_rows_display([2, 5])}"
+        )
+
+        app.results_frame.update_results.assert_called_once_with(
+            rows_analyzed=10,
+            pdfs_created=6,
+            skipped=2,
+            failed=2,
+            output_dir="/out",
+        )
+        app.results_frame.show.assert_called_once_with(before=app.log_area)
 
 
 class TestRunGui:

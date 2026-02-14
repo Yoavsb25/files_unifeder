@@ -1,4 +1,5 @@
-"""CSV and serial number configuration constants for PDF Merger."""
+"""CSV and serial number configuration constants for PDF Merger.
+DEFAULT_SERIAL_NUMBERS_COLUMN must match pdf_merger.models.defaults.DEFAULT_SERIAL_NUMBERS_COLUMN (core cannot import models here to avoid circular import)."""
 
 
 class CsvSerialConstants:

@@ -245,6 +245,8 @@ This is suitable for generating **per‑client deliveries** with controlled lice
 
 **Public API:** External code and scripts should use only the symbols exported from the `pdf_merger` package root (e.g. `run_merge`, `run_merge_job`, `load_config`, `AppConfig`, `MergeResult`, `PDFMergerError`). See `docs/ARCHITECTURE.md` for the full Public API section.
 
+**Code standards:** New contributors should read [CONTRIBUTING.md](CONTRIBUTING.md), which references the quality bar in `docs/ARCHITECTURE.md` and the improvement plan in `docs/IMPROVEMENT_ROADMAP.md`.
+
 ### Running tests
 
 ```bash

@@ -345,6 +345,7 @@ flowchart TD
 #### 7. PDF Operations (`pdf_merger/operations/pdf_merger.py`)
 
 - **Responsibility**: PDF file operations with streaming support. File finding uses [matching rules](pdf_merger/matching/rules.py); see the [Matching Rules](#matching-rules) section.
+- **PDF merge backend**: An optional `PDFMergeBackend` protocol is defined in this module (`merge(pdf_paths, output_path) -> bool`). The row pipeline (`core/row_pipeline.py`) accepts an optional `pdf_merge_backend` argument; when provided, it is used instead of the default `merge_pdfs()` so tests can inject a mock or future code can plug in an alternate implementation.
 - **Features**:
   - `find_source_file()`: Uses formal matching rules with ambiguity detection
   - `find_pdf_file()`: Case-insensitive PDF finding (backward compatibility)
@@ -695,6 +696,11 @@ The codebase aims for a **9/10** engineering standard. The following checklist i
 7. **Long methods**: `process_job` and `_on_merge_complete` are decomposed into named helpers; key behavior is testable (e.g. `_apply_merge_result_to_ui`, `_process_single_row_and_report`).
 
 See `docs/IMPROVEMENT_ROADMAP.md` for the full improvement plan and phased execution.
+
+### Package dependencies
+
+- **Config** and **utils** do not import from `core`; they use `pdf_merger.models.defaults` for the default serial numbers column, and utils provides its own column reading (`utils.column_reader`) and serial-number constants (`utils.serial_number_parser`) so validators remain independent of core.
+- **Licensing** (`pdf_merger.licensing`) and **matching** (`pdf_merger.matching`) are allowed to depend on `core` for enums and constants (e.g. `LicenseStatus`, `WarningLevel`, `MatchConfidence`, `MatchBehavior`). This is intentional until a shared "domain enums" or "app constants" package exists that core, config, licensing, and matching can all depend on. When introducing such a package, consider moving these shared enums there.
 
 ---
 

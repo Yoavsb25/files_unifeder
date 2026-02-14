@@ -7,7 +7,7 @@ All AppConfig fields are validated here; invalid values are coerced to defaults 
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from ..core.constants import Constants
+from ..models.defaults import DEFAULT_SERIAL_NUMBERS_COLUMN
 from ..utils.logging_utils import get_logger
 
 logger = get_logger("pdf_merger.config.config_schema")
@@ -109,7 +109,7 @@ def validate_column(value: Optional[str]) -> str:
         ValueError: If column name is invalid
     """
     if value is None or value == "":
-        return Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+        return DEFAULT_SERIAL_NUMBERS_COLUMN
 
     # Column names should be non-empty strings
     if not isinstance(value, str) or len(value.strip()) == 0:
@@ -186,9 +186,9 @@ def validate_config(data: Dict[str, Any]) -> Dict[str, Any]:
             validated["required_column"] = validate_column(data["required_column"])
         except ValueError as e:
             logger.warning(f"Invalid required_column in config: {e}")
-            validated["required_column"] = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+            validated["required_column"] = DEFAULT_SERIAL_NUMBERS_COLUMN
     else:
-        validated["required_column"] = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+        validated["required_column"] = DEFAULT_SERIAL_NUMBERS_COLUMN
 
     # Observability and matching: validate booleans when present
     if "metrics_enabled" in data:

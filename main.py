@@ -4,6 +4,7 @@ Main entry point for PDF Merger.
 Launches GUI application with license checking.
 """
 
+import logging
 import sys
 import tkinter as tk
 from tkinter import messagebox
@@ -16,7 +17,7 @@ from pdf_merger.config.config_manager import load_config
 from pdf_merger.observability import get_crash_reporter, get_metrics_collector, get_telemetry_service
 
 # Setup logging
-setup_logger("pdf_merger", level=20)  # INFO level
+setup_logger("pdf_merger", level=logging.INFO)
 logger = get_logger("main")
 
 
