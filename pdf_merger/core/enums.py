@@ -1,10 +1,12 @@
 """
 Enumerations for PDF Merger.
 Centralized location for all type-safe enumerations.
+MatchConfidence and MatchBehavior are owned by the domain layer; re-exported here for backward compatibility.
 """
 
 from enum import Enum
 
+from ..models.enums import MatchConfidence, MatchBehavior
 
 # ============================================================================
 # Enumerations
@@ -25,20 +27,6 @@ class LicenseStatus(Enum):
     NOT_FOUND = "not_found"
     INVALID_FORMAT = "invalid_format"
     VERSION_MISMATCH = "version_mismatch"
-
-
-class MatchConfidence(Enum):
-    """Confidence level of a match."""
-    EXACT = "exact"
-    STEM = "stem"
-    LOW = "low"
-
-
-class MatchBehavior(Enum):
-    """Behavior when multiple matches are found."""
-    FAIL_FAST = "fail_fast"
-    WARN_FIRST = "warn_first"
-    LOG_ALL = "log_all"
 
 
 # RowStatus is owned by the domain layer: use pdf_merger.models.RowStatus.

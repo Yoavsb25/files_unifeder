@@ -272,18 +272,14 @@ def load_config(
     Returns:
         AppConfig with merged configuration
     """
-    # Precedence: defaults < preset < user < env (each merge overlays higher over lower)
+    # Apply in order: (1) defaults, (2) per-project preset, (3) user config file, (4) environment variables.
+    # Each step overlays the previous; final precedence is env > user > preset > defaults.
     config = AppConfig()
-    # 3. Load per-project preset (applied after defaults, before user config and env)
     project_preset = load_project_preset(start_path)
     if project_preset:
         config = config.merge(project_preset)
-    
-    # 2. Load user config file
     user_config = load_user_config()
     config = config.merge(user_config)
-    
-    # 1. Apply environment variables (highest priority)
     env_config = load_env_config()
     config = config.merge(env_config)
     

@@ -10,7 +10,7 @@ from .rules import (
     find_matching_files,
     find_best_match,
 )
-from ..core.enums import MatchConfidence, MatchBehavior
+from ..models.enums import MatchConfidence, MatchBehavior
 
 __all__ = [
     'MatchResult',

@@ -18,8 +18,11 @@ from pdf_merger.models import Row, MergeJob, MergeResult, RowResult, RowStatus
 
 
 class TestProcessRow:
-    """Test cases for process_row function. Legacy API; prefer process_row_with_models / process_job."""
-    
+    """Test cases for process_row function. Legacy API; prefer process_row_with_models / process_job.
+
+    split_serial_numbers is patched at use site (merge_processor) so the mock is applied.
+    If merge_processor is refactored to import from utils.serial_number_parser, patch that module instead.
+    """
     @patch('pdf_merger.core.row_pipeline.merge_pdfs')
     @patch('pdf_merger.core.row_pipeline.find_source_file')
     @patch('pdf_merger.core.merge_processor.split_serial_numbers')

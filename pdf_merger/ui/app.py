@@ -380,9 +380,9 @@ class PDFMergerApp(ctk.CTk):
 
     def _toggle_detailed_log(self):
         """Toggle visibility of the detailed log area (expand/collapse)."""
-        self.log_area._toggle()
+        self.log_area.toggle_detail()
         self.results_frame.view_log_btn.configure(
-            text=HIDE_DETAILED_LOG if self.log_area._expanded else VIEW_DETAILED_LOG
+            text=HIDE_DETAILED_LOG if self.log_area.is_expanded() else VIEW_DETAILED_LOG
         )
 
     def _select_output_directory(self):

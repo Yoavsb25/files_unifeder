@@ -29,6 +29,8 @@ Set these environment variables to configure the application:
 - `PDF_MERGER_OUTPUT_DIR` - Path to the output directory for merged PDFs
 - `PDF_MERGER_COLUMN` - Name of the column containing serial numbers (default: `serial_numbers`)
 
+Environment variables are not path-validated at load time; invalid paths may surface when the config is first used (e.g. when running a merge).
+
 ### Example (Unix/Linux/macOS)
 
 ```bash

@@ -307,8 +307,12 @@ class LogArea(ctk.CTkFrame):
         self.log_text.tag_config(self.TAG_INFO, foreground=TEXT_SECONDARY)
         self.log_text.tag_config(self.TAG_WARNING, foreground=YELLOW_WARNING)
 
-    def _toggle(self):
-        """Toggle collapsed/expanded state."""
+    def is_expanded(self) -> bool:
+        """Return True if the detailed log area is expanded (visible)."""
+        return self._expanded
+
+    def toggle_detail(self) -> bool:
+        """Toggle collapsed/expanded state. Returns the new expanded state."""
         self._expanded = not self._expanded
         if self._expanded:
             self.content_frame.pack(fill="both", expand=True, padx=0, pady=(0, 8))
@@ -316,6 +320,11 @@ class LogArea(ctk.CTkFrame):
         else:
             self.content_frame.pack_forget()
             self.header_btn.configure(text="Detailed Log  ▶")
+        return self._expanded
+
+    def _toggle(self):
+        """Internal: toggle collapsed/expanded (used by header button command)."""
+        self.toggle_detail()
 
     def log_warning(self, message: str):
         """Add warning message with yellow color."""

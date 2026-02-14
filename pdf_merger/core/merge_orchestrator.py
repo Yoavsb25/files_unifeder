@@ -1,12 +1,10 @@
 """
 Merge orchestrator module.
 
-Orchestrator: UI-facing API and job construction (run_merge, run_merge_job);
-loads rows from file and builds MergeJob. Orchestrator owns row creation from
-raw data (Row.from_raw_data); processor only receives MergeJob with rows. Do not
-add job execution or row-level logic here—those belong in merge_processor. Processor (merge_processor): job
-execution and row-level logic (process_job, process_row_with_models); do not
-add UI-facing API or row loading from file here.
+- Orchestrator: UI-facing API and job construction (run_merge, run_merge_job). Loads rows from file and builds MergeJob.
+- Row creation from raw data (Row.from_raw_data) lives here; processor only receives MergeJob with rows.
+- Do not add job execution or row-level logic here—those belong in merge_processor.
+- Processor (merge_processor): job execution and row-level logic (process_job, process_row_with_models); do not add UI-facing API or row loading from file there.
 """
 
 from pathlib import Path
@@ -75,16 +73,21 @@ def run_merge_job(
 ) -> MergeResult:
     """
     Run the merge operation using domain models.
-    
+
     Args:
         input_file: Path to CSV or Excel file
         pdf_dir: Path to folder containing PDF and Excel files
         output_dir: Path to output folder
         required_column: Name of the column containing serial numbers
         job_id: Optional job identifier for tracking
-        
+        fail_on_ambiguous: If True, raise on ambiguous file matches (default True)
+        on_progress: Optional callback (step, current, total, message) for progress updates
+
     Returns:
         MergeResult with detailed processing results
+
+    Note:
+        on_progress is invoked from the processing thread; schedule UI updates on the main thread if needed.
     """
     logger.info(f"Starting merge job {job_id or 'default'}")
     logger.info(f"  Input file: {input_file}")

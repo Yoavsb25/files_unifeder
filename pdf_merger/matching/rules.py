@@ -8,14 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-from ..core.constants import Constants
-from ..core.enums import MatchConfidence, MatchBehavior
+from ..models.enums import MatchConfidence, MatchBehavior
+from ..models.file_extensions import SOURCE_FILE_EXTENSIONS
 from ..utils.logging_utils import get_logger
 
 logger = get_logger("pdf_merger.matching.rules")
-
-# Module-level constants
-SOURCE_FILE_EXTENSIONS = Constants.SOURCE_FILE_EXTENSIONS
 
 
 @dataclass
