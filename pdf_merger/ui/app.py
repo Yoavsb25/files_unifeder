@@ -11,7 +11,6 @@ from typing import Any, Callable, Optional
 import customtkinter as ctk
 
 from ..core import format_failed_rows_display
-from ..core.constants import Constants
 from ..core.types import PROGRESS_LOADING, PROGRESS_PROCESSING
 
 from .. import APP_VERSION
@@ -20,25 +19,17 @@ from ..utils.exceptions import PDFMergerError
 from ..utils.logging_utils import get_logger, setup_logger
 from ..models import MergeResult
 from ..config.config_manager import load_config, save_config, resolve_required_column
-from .components import SetupCard, LicenseFrame, LogArea, ResultsFrame, Footer, bind_focus_highlight
+from .components import LogArea, ResultsFrame, Footer
 from .license_ui import update_license_display
 from .handlers import FileSelectionHandler, MergeHandler
 from .app_helpers import get_run_block_reasons, can_run_merge
-from .config_ui import apply_config_to_ui
+from .config_ui import load_config_into_ui
 from .dialogs import show_detailed_report_dialog
 from .theme import (
-    COLUMN_ENTRY_WIDTH,
     CORNER_RADIUS,
     SECTION_SPACING,
-    CARD_SPACING,
-    CONTENT_MAX_WIDTH,
     APP_BACKGROUND,
     CARD_BG,
-    CARD_BORDER,
-    FONT_TITLE_SIZE,
-    FONT_LABEL_SIZE,
-    FONT_MONO_SIZE,
-    INPUT_BACKGROUND,
     PRIMARY_BLUE,
     PRIMARY_BLUE_HOVER,
     WINDOW_SIZE_DEFAULT,
@@ -52,6 +43,7 @@ from .theme import (
     HIDE_DETAILED_LOG,
     MESSAGE_PROCESSING_COMPLETE,
 )
+from .setup_ui import build_header, build_setup_cards
 # Setup logging
 setup_logger("pdf_merger", level=logging.INFO)
 logger = get_logger("pdf_merger.ui.app")
@@ -145,62 +137,18 @@ class PDFMergerApp(ctk.CTk):
         return main_frame
 
     def _build_header(self, main_frame):
-        """Build title, license frame, and serial numbers column row; store column_frame for setup cards."""
-        title_label = ctk.CTkLabel(
-            main_frame,
-            text=APP_NAME,
-            font=ctk.CTkFont(size=FONT_TITLE_SIZE, weight="bold")
-        )
-        title_label.pack(pady=(0, SECTION_SPACING))
-        self.license_frame = LicenseFrame(main_frame)
-        self.license_frame.pack(fill="x", pady=(0, SECTION_SPACING))
-        column_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        ctk.CTkLabel(
-            column_frame,
-            text="Serial numbers column:",
-            font=ctk.CTkFont(size=FONT_LABEL_SIZE, weight="bold"),
-        ).pack(anchor="w", side="left", padx=(0, 8))
-        self.column_entry = ctk.CTkEntry(
-            column_frame,
-            placeholder_text=Constants.EXAMPLE_SERIAL_COLUMN_PLACEHOLDER,
-            font=ctk.CTkFont(family="Courier New", size=FONT_MONO_SIZE),
-            width=COLUMN_ENTRY_WIDTH,
-            height=40,
-            fg_color=INPUT_BACKGROUND,
-            border_width=1,
-            border_color=CARD_BORDER,
-        )
-        self.column_entry.pack(side="left")
-        bind_focus_highlight(self.column_entry)
-        self._column_frame = column_frame
+        """Build title, license frame, and serial numbers column row."""
+        self.license_frame, self._column_frame, self.column_entry = build_header(main_frame, APP_NAME)
 
     def _build_setup_cards(self, main_frame):
         """Build the three setup cards (Instructions File, Source Directory, Output Directory)."""
-        self.input_file_selector = SetupCard(
+        self.input_file_selector, self.pdf_dir_selector, self.output_dir_selector = build_setup_cards(
             main_frame,
-            step_number=1,
-            title="Instructions File",
-            helper_text=Constants.EXAMPLE_SERIAL_COLUMN_HELPER,
-            on_select=self._select_input_file,
-            extra_row=self._column_frame,
+            self._column_frame,
+            on_select_input=self._select_input_file,
+            on_select_pdf_dir=self._select_pdf_directory,
+            on_select_output=self._select_output_directory,
         )
-        self.input_file_selector.pack(fill="x", pady=(0, CARD_SPACING))
-        self.pdf_dir_selector = SetupCard(
-            main_frame,
-            step_number=2,
-            title="Source Directory",
-            helper_text="All referenced PDFs & Excel files must live here",
-            on_select=self._select_pdf_directory,
-        )
-        self.pdf_dir_selector.pack(fill="x", pady=(0, CARD_SPACING))
-        self.output_dir_selector = SetupCard(
-            main_frame,
-            step_number=3,
-            title="Output Directory",
-            helper_text="Merged PDFs will be saved here",
-            on_select=self._select_output_directory,
-        )
-        self.output_dir_selector.pack(fill="x", pady=(0, SECTION_SPACING))
 
     def _build_run_section(self, main_frame):
         """Build Run Merge button and progress bar."""
@@ -250,25 +198,12 @@ class PDFMergerApp(ctk.CTk):
     
     def _load_config_into_ui(self):
         """Load configuration values into UI fields if available."""
-        from ..utils.validators import validate_file, validate_folder
-
-        def validate_input(p: Path) -> None:
-            validate_file(p, required_column=self.config.required_column)
-
-        def validate_source(p: Path) -> None:
-            validate_folder(p, "Source")
-
-        def validate_output(p: Path) -> None:
-            p.mkdir(parents=True, exist_ok=True)
-
-        apply_config_to_ui(
+        load_config_into_ui(
             self.config,
-            column_entry=self.column_entry,
-            path_applyments=[
-                (self.config.input_file, "input_file_path", self.input_file_selector, validate_input, "input file"),
-                (self.config.pdf_dir, "pdf_dir_path", self.pdf_dir_selector, validate_source, "source directory"),
-                (self.config.output_dir, "output_dir_path", self.output_dir_selector, validate_output, "output directory"),
-            ],
+            self.column_entry,
+            self.input_file_selector,
+            self.pdf_dir_selector,
+            self.output_dir_selector,
             set_path_attr=lambda attr, p: setattr(self, attr, p),
             log_info=logger.info,
             log_warning=logger.warning,

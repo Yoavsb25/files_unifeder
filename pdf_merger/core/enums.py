@@ -1,12 +1,9 @@
 """
-Enumerations for PDF Merger.
-Centralized location for all type-safe enumerations.
-MatchConfidence and MatchBehavior are owned by the domain layer; re-exported here for backward compatibility.
+Enumerations for PDF Merger (core/operations/licensing).
+MatchConfidence and MatchBehavior live in pdf_merger.models.enums; use those for matching.
 """
 
 from enum import Enum
-
-from ..models.enums import MatchConfidence, MatchBehavior
 
 # ============================================================================
 # Enumerations

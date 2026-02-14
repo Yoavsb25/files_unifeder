@@ -14,8 +14,9 @@ from .merge_processor import process_job
 from .job_loader import load_job_from_file
 from .types import ProgressCallback
 from .constants import Constants
-from ..models import MergeResult
+from ..models import MergeResult, RowResult
 from ..utils.logging_utils import get_logger
+from ..utils.exceptions import JobLoadError
 
 logger = get_logger("pdf_merger.core.merge_orchestrator")
 
@@ -52,16 +53,25 @@ def run_merge_job(
     logger.info(f"  Source directory: {pdf_dir}")
     logger.info(f"  Output directory: {output_dir}")
 
-    job = load_job_from_file(
-        input_file=input_file,
-        source_folder=pdf_dir,
-        output_folder=output_dir,
-        required_column=required_column,
-        job_id=job_id,
-        on_progress=on_progress,
-    )
+    try:
+        job = load_job_from_file(
+            input_file=input_file,
+            source_folder=pdf_dir,
+            output_folder=output_dir,
+            required_column=required_column,
+            job_id=job_id,
+            on_progress=on_progress,
+        )
+    except JobLoadError as e:
+        logger.error("Job load failed: %s", e)
+        result = MergeResult(total_rows=0, successful_merges=0, job_id=job_id)
+        result.add_row_result(
+            RowResult.failed(row_index=0, error_message=str(e))
+        )
+        return result
+
     result = process_job(job, fail_on_ambiguous=fail_on_ambiguous, on_progress=on_progress)
-    
+
     logger.info(f"Merge job {job_id or 'default'} completed")
     logger.info(f"  Total rows: {result.total_rows}")
     logger.info(f"  Successful: {result.successful_merges}")

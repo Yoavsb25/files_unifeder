@@ -112,10 +112,9 @@ class PDFProcessingError(PDFMergerError):
     """
     Raised when PDF operations fail (reading, merging, writing).
 
-    Reserved for use in PDF operations (e.g. pdf_merger.operations.pdf_merger,
-    streaming_pdf_merger) when a PDF-specific failure occurs. Currently not
-    raised in production; callers may catch it for fine-grained handling once
-    operations are updated to use this type instead of generic Exception.
+    Raised by operations.pdf_merger and operations.streaming_pdf_merger on PDF
+    read, merge, or write failures. Callers (row_pipeline, merge_processor)
+    catch it and map to row-level results (RowPipelineResult / RowResult).
     """
     
     def __init__(self, message: str, pdf_path: Optional[Path] = None, operation: Optional[str] = None):
@@ -142,6 +141,25 @@ class PDFProcessingError(PDFMergerError):
             full_message = message
         
         super().__init__(full_message)
+
+
+class JobLoadError(PDFMergerError):
+    """
+    Raised when loading a merge job from file fails for an unexpected reason.
+
+    Raised by job_loader.load_job_from_file() when read_data_file() raises
+    an exception that is not OSError, InvalidFileFormatError, or MissingColumnError
+    (those are re-raised as-is). Callers (e.g. merge_orchestrator) catch JobLoadError
+    and map to a failed MergeResult or re-raise for API use.
+    """
+
+    def __init__(self, message: str, path: Optional[Path] = None, cause: Optional[Exception] = None):
+        self.path = Path(path) if path and not isinstance(path, Path) else path
+        self.cause = cause
+        parts = [message]
+        if self.path:
+            parts.append(f" (file: {self.path})")
+        super().__init__("".join(parts))
 
 
 class ValidationError(PDFMergerError):

@@ -110,8 +110,8 @@ def find_pdf_file(folder: Path, filename: str) -> Optional[Path]:
     """
     Find a PDF file matching the filename in the given folder.
     
-    This function is kept for backward compatibility.
-    For finding both PDF and Excel files, use find_source_file() instead.
+    Deprecated: For finding both PDF and Excel files, use find_source_file() instead.
+    This function is kept for backward compatibility and tests.
     
     Args:
         folder: Path to the folder containing PDF files

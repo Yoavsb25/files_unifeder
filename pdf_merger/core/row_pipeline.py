@@ -92,7 +92,7 @@ def run_row_pipeline(
 ) -> RowPipelineResult:
     """
     Find source files, convert Excel to PDF, merge, cleanup for one row.
-    Caller is responsible for parsing/validation and mapping to RowResult or legacy bool.
+    Caller is responsible for parsing/validation and mapping to RowResult (or to legacy bool when using process_row).
     May raise ValueError on ambiguous match when fail_on_ambiguous is True.
     When pdf_merge_backend is provided, it is used instead of the default merge_pdfs (e.g. for tests or alternate backends).
     """

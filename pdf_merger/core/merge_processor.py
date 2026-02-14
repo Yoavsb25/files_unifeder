@@ -192,7 +192,7 @@ def process_row_with_models(
             if row_result.output_file:
                 file_size_mb = row_result.output_file.stat().st_size / BYTES_PER_MB
                 metrics.record_gauge("output_file_size_mb", file_size_mb)
-        except Exception:
+        except OSError:
             pass
     elif row_result.is_failed():
         metrics.record_counter("rows_failed", tags={"reason": "merge_failed"})
@@ -330,6 +330,7 @@ def process_job(
     except ValueError as e:
         _record_job_failure(result, current_row_index, start_time, e, "AmbiguousMatch", metrics)
         return result
+    # Intentional: any unexpected row-level failure; domain exceptions (above) are handled explicitly.
     except Exception as e:
         _record_job_failure(result, current_row_index, start_time, e, "UnexpectedError", metrics)
         return result

@@ -131,12 +131,12 @@ sequenceDiagram
     alt License Valid
         Main->>GUI: Launch GUI
         User->>GUI: Select Files & Run Merge
-        GUI->>Core: run_merge()
-        Core->>Validator: Validate Inputs
-        Validator-->>Core: Validation Result
-        Core->>Processor: process_file()
-        Processor->>FileReader: read_data_file()
-        FileReader-->>Processor: DataFrame
+        GUI->>Core: run_merge_job()
+        Core->>JobLoader: load_job_from_file()
+        JobLoader->>FileReader: read_data_file()
+        FileReader-->>JobLoader: rows
+        JobLoader-->>Core: MergeJob
+        Core->>Processor: process_job(MergeJob)
         loop For Each Row
         Processor->>PDFOps: find_source_file()
         PDFOps-->>Processor: File Paths (PDF/Excel)
@@ -150,8 +150,8 @@ sequenceDiagram
         PDFOps-->>Processor: Merged PDF
         Processor->>Processor: Cleanup Temp Files
         end
-        Processor-->>Core: ProcessingResult
-        Core-->>GUI: Result Summary
+        Processor-->>Core: MergeResult
+        Core-->>GUI: MergeResult
         GUI-->>User: Display Results
     else License Invalid
         Main->>GUI: Show Error & Exit
@@ -168,7 +168,7 @@ sequenceDiagram
 files_unifeder/
 ├── main.py                      # Application entry point
 ├── pdf_merger/                   # Main package
-│   ├── __init__.py              # Public API exports (run_merge, run_merge_job, load_config, etc.)
+│   ├── __init__.py              # Public API exports (run_merge_job, load_config, AppConfig, MergeResult, PDFMergerError)
 │   │
 │   ├── config/                  # Configuration
 │   │   ├── config_manager.py    # Configuration loading with precedence (env > user config > preset > defaults)
@@ -183,8 +183,7 @@ files_unifeder/
 │   │   ├── csv_excel_reader.py   # CSV/Excel file reading
 │   │   ├── serial_number_parser.py  # Re-export from utils (backward compatibility)
 │   │   ├── result_reporter.py   # Result formatting
-│   │   ├── result_view.py       # Unified result view for formatters
-│   │   ├── result_types.py     # Legacy ProcessingResult and adapter
+│   │   ├── result_view.py       # Unified ResultView for formatters (built from MergeResult)
 │   │   └── enums.py             # Domain/operations enums (UI display enums in ui/display_enums.py)
 │   │
 │   ├── models/                  # Domain models
@@ -248,7 +247,7 @@ files_unifeder/
 
 - **core**: Workflow, row loading, and result formatting. Contains the orchestrator (UI-facing API, job construction), processor (job execution, row-level logic), row pipeline (find/convert/merge for one row), result reporter and result view, constants, enums (domain/operations only), CSV/Excel reader, and serial number parser. Does not perform file-format operations (PDF merge, Excel→PDF); those live in **operations**.
 - **operations**: File-format operations only (PDF finding/merging, streaming merge, Excel-to-PDF conversion). Used by core (processor, row_pipeline) but does not depend on core.
-- **result_types** and **result_view** live in core; they provide the legacy ProcessingResult and the unified ResultView for formatters.
+- **result_view** lives in core; it provides the unified ResultView for formatters (built from MergeResult).
 
 ### Core Components
 
@@ -281,14 +280,13 @@ flowchart TD
 **Orchestrator vs processor split:** The orchestrator (`merge_orchestrator.py`) is the UI-facing API and handles job construction and row loading; the processor (`merge_processor.py`) handles job execution and row-level logic.
 
 - **`merge_orchestrator.py`**: UI-facing API and job construction
-  - `run_merge()`: Legacy entry point (returns `ProcessingResult`)
-  - `run_merge_job()`: Recommended entry point (returns `MergeResult`); builds `MergeJob`, loads rows from file, then delegates to processor
-  - Single source for default column: uses `Constants.DEFAULT_SERIAL_NUMBERS_COLUMN` from `constants.py`
+  - `run_merge_job()`: Entry point (returns `MergeResult`); builds `MergeJob`, loads rows from file, then delegates to processor. Catches `JobLoadError` and returns a failed result for the UI.
+  - Single source for default column: canonical value is `DEFAULT_SERIAL_NUMBERS_COLUMN` in `pdf_merger.models.defaults`; `Constants.DEFAULT_SERIAL_NUMBERS_COLUMN` in `core.constants` (via `csv_serial_constants`) must stay in sync (core cannot import models to avoid circular imports). A test asserts both match.
 
 - **`merge_processor.py`**: Job execution and row-level logic
-  - `process_file()`: Process entire CSV/Excel file (legacy, backward compatible)
   - `process_job()`: Process `MergeJob` using domain models (recommended)
   - `process_row_with_models()`: Process single row using `Row` model
+  - `process_row()`: Legacy bool-returning API (testing/backward compatibility only)
   - Returns `MergeResult` with detailed per-row results
 
 - **`result_reporter.py`**: Result formatting for display (summary and detailed reports)
@@ -297,7 +295,6 @@ flowchart TD
 
 - **Responsibility**: Job execution and row-level processing using domain models
 - **Key Functions**:
-  - `process_file()`: Process entire CSV/Excel file (legacy, backward compatible)
   - `process_job()`: Process MergeJob using domain models (recommended)
   - `process_row_with_models()`: Process single row using Row model
   - Returns `MergeResult` with detailed per-row results
@@ -665,11 +662,10 @@ This section provides comprehensive mermaid diagrams explaining the code structu
 
 **External code and integrations must use only the following.** All other modules are internal and may change without notice.
 
-- **Entry points (primary)**: `run_merge_job` — run merge operations; returns `MergeResult`. Use `load_job_from_file` (from `pdf_merger.core.job_loader`) plus `process_job` when you need to build the job yourself.
-- **Entry points (legacy, deprecated)**: `run_merge`, `process_file` — deprecated; use `run_merge_job` and `load_job_from_file`/`process_job` instead. Will be removed in 2.0. See `docs/DEPRECATION.md`.
+- **Entry points**: `run_merge_job` — run merge operations; returns `MergeResult`. Use `load_job_from_file` (from `pdf_merger.core.job_loader`) plus `process_job` when you need to build the job yourself.
 - **Configuration**: `load_config`, `AppConfig` — load and represent application configuration.
-- **Result types**: `MergeResult` (preferred); `ProcessingResult` (legacy, deprecated). Use `as_processing_result(merge_result)` when calling code that expects `ProcessingResult`.
-- **Errors**: `PDFMergerError` — base exception for error handling.
+- **Result types**: `MergeResult` — result of a merge run; use `MergeResult` everywhere. See `docs/DEPRECATION.md` for removed legacy types.
+- **Errors**: `PDFMergerError` — base exception for error handling; `JobLoadError` for job load failures.
 - **Package metadata**: `APP_VERSION`, `APP_NAME` — version and display name.
 
 Import from the package root: `from pdf_merger import run_merge_job, load_config, AppConfig, MergeResult, PDFMergerError`.
@@ -681,7 +677,7 @@ Import from the package root: `from pdf_merger import run_merge_job, load_config
 - **quiet flag**: When `on_progress` is provided, the processor passes `quiet=True` into the row pipeline and row-level logging is suppressed; the UI drives progress messages via the callback.
 - **Pipeline/result messages**: Canonical error messages for the row pipeline and result mapping live in `pdf_merger.core.pipeline_constants` (e.g. `NO_SOURCE_FILES`, `NO_PDF_AVAILABLE`, `MERGE_FAILED`). Use these constants instead of string literals when setting or comparing error messages.
 - **Tests**: UI unit tests live under `tests/unit/ui/`. Tkinter and CustomTkinter are mocked in `conftest.py` so no display is required. Component tests are in `test_components.py`.
-- **Legacy APIs**: `run_merge`, `process_file`, and `ProcessingResult` are kept for backward compatibility. New code should use `run_merge_job`, `process_job`/`process_row_with_models`, and `MergeResult`.
+- **API**: Use `run_merge_job`, `process_job`/`process_row_with_models`, and `MergeResult`. Legacy entry points and result types have been removed (see `docs/DEPRECATION.md`).
 
 ### Quality bar (Target 9/10)
 
@@ -689,10 +685,10 @@ The codebase aims for a **9/10** engineering standard. The following checklist i
 
 1. **Dependency direction**: Domain (`pdf_merger.models`) has zero imports from `core` or `operations`; core and UI depend on domain and operations only.
 2. **Config schema**: Every `AppConfig` field is validated and documented in one schema; invalid values are rejected or normalized with clear rules.
-3. **Single job loading**: One implementation of "load file → MergeJob with rows" (`load_job_from_file`); used by both `run_merge_job` and `process_file`.
+3. **Single job loading**: One implementation of "load file → MergeJob with rows" (`load_job_from_file`); used by `run_merge_job`.
 4. **No built-in shadowing**: Custom exceptions are namespaced (e.g. `PDFMergerFileNotFoundError`); no shadowing of built-in exception names.
 5. **Merge state**: Single source of truth for "merge in progress" inside `MergeHandler`; UI only reads state; transitions (idle → running → idle) are explicit and hard to misuse.
-6. **Legacy API**: Legacy entry points (`run_merge`, `process_file`, `ProcessingResult`) are deprecated with a documented timeline (e.g. remove in 2.0).
+6. **API**: Single entry point `run_merge_job` and result type `MergeResult`; legacy APIs removed (see DEPRECATION.md).
 7. **Long methods**: `process_job` and `_on_merge_complete` are decomposed into named helpers; key behavior is testable (e.g. `_apply_merge_result_to_ui`, `_process_single_row_and_report`).
 
 See `docs/IMPROVEMENT_ROADMAP.md` for the full improvement plan and phased execution.
@@ -720,10 +716,13 @@ Which exceptions are raised by which layer, and how the UI handles them:
 - **Operations** (`pdf_merger.operations.pdf_merger`, `streaming_pdf_merger`): On PDF read or merge failure, raise `PDFProcessingError` (message, path, operation). The row pipeline catches it and returns a failed `RowPipelineResult` with the error message.
 - **Validators** (`pdf_merger.utils.validators`): Raise `PDFMergerError` subclasses (`PDFMergerFileNotFoundError`, `MissingColumnError`, `InvalidFileFormatError`, `ValidationError`).
 - **Matching** (`pdf_merger.matching.rules`): Raise `ValueError` on ambiguous match when behavior is `FAIL_FAST`.
-- **Job loader** (`pdf_merger.core.job_loader`): Re-raises `OSError`, `InvalidFileFormatError`, and `MissingColumnError` so callers can distinguish load failure from an empty file. On any other exception, logs "Unknown error during load" and returns an empty job.
+- **Job loader** (`pdf_merger.core.job_loader`): Re-raises `OSError`, `InvalidFileFormatError`, and `MissingColumnError` as-is. On any other exception during read, raises `JobLoadError` (message, path, cause) so callers can distinguish load failure from "zero rows." Returns a `MergeJob` with rows only when the file was read successfully (including empty file).
+- **Orchestrator** (`pdf_merger.core.merge_orchestrator`): Catches `JobLoadError` from `load_job_from_file`, logs the error, and returns a failed `MergeResult` (one failed row with the load error message) so the UI can display it; does not re-raise. API callers that need to handle load failure can catch `JobLoadError` before calling `run_merge_job` by using `load_job_from_file` and `process_job` directly.
 - **Merge worker** (`pdf_merger.ui.handlers.MergeHandler._merge_worker`): Catches `PDFMergerError` and `ValueError` explicitly and calls `on_error` with the message; then catches `Exception` and calls `on_error` for unexpected errors. Does not catch `BaseException` (so `KeyboardInterrupt` and `SystemExit` propagate). Always calls `_set_idle()` in `finally`.
 
-See `pdf_merger.utils.exceptions` for the full exception hierarchy.
+See `pdf_merger.utils.exceptions` for the full exception hierarchy. `JobLoadError` is raised by the job loader on unexpected read failures and is caught by the orchestrator to produce a failed `MergeResult`.
+
+**Intentional broad catches:** The following intentionally catch `Exception` (but never `BaseException`, so `KeyboardInterrupt` and `SystemExit` propagate): (1) `main.show_error_dialog` — last-resort UI fallback when messagebox fails; (2) `merge_processor.process_job` — final catch for any unexpected row-level failure after domain exceptions; (3) `ui.handlers.MergeHandler._merge_worker` — so the UI always returns to idle; (4) observability crash reporter when installing hooks. Each is documented at the call site.
 
 ### Excel to PDF Conversion
 
@@ -932,7 +931,7 @@ flowchart TD
   - Per-row results with status (SUCCESS, FAILED, SKIPPED, PARTIAL)
   - Tracks files found, files missing, processing times
   - Provides success rate calculations
-  - Backward compatible with legacy `ProcessingResult`
+  - Single result type for all merge runs
 
 **Benefits**:
 - Type safety throughout the codebase

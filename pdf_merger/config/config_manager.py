@@ -67,6 +67,12 @@ class AppConfig:
             crash_reporting_enabled=data.get('crash_reporting_enabled', False),
             fail_on_ambiguous_matches=data.get('fail_on_ambiguous_matches', True)
         )
+
+    @classmethod
+    def from_validated_dict(cls, data: dict) -> 'AppConfig':
+        """Create config from dictionary after validation. Use at all load sites so no raw dict builds config without validation."""
+        validated = validate_config(data)
+        return cls.from_dict(validated)
     
     def get_input_file_path(self) -> Optional[Path]:
         """Get input file as Path object."""
@@ -189,8 +195,7 @@ def load_project_preset(start_path: Optional[Path] = None) -> Optional[AppConfig
     try:
         with open(preset_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        validated_data = validate_config(data)
-        config = AppConfig.from_dict(validated_data)
+        config = AppConfig.from_validated_dict(data)
         logger.info(f"Loaded project preset from {preset_path}")
         return config
     except (OSError, json.JSONDecodeError, ValueError) as e:
@@ -214,9 +219,7 @@ def load_user_config() -> AppConfig:
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        # Validate config
-        validated_data = validate_config(data)
-        config = AppConfig.from_dict(validated_data)
+        config = AppConfig.from_validated_dict(data)
         logger.info(f"Loaded user config from {config_path}")
         return config
     except (OSError, json.JSONDecodeError, ValueError) as e:
@@ -247,9 +250,7 @@ def load_env_config() -> AppConfig:
     
     if config_data:
         logger.debug("Loaded configuration from environment variables")
-        # Validate config
-        validated_data = validate_config(config_data)
-        return AppConfig.from_dict(validated_data)
+        return AppConfig.from_validated_dict(config_data)
     
     return AppConfig()
 

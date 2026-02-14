@@ -103,7 +103,8 @@ class FileSelectionHandler:
                 if self.on_file_selected:
                     self.on_file_selected(path)
                 return path
-            except (PDFMergerError, Exception) as e:
+            except Exception as e:
+                # Validation and folder ops can raise PDFMergerError or others; handle all for UI.
                 field = self.FIELD_OUTPUT if not validate else self.FIELD_SOURCE
                 self._handle_error(str(e), field)
                 return None
@@ -203,6 +204,7 @@ class MergeHandler:
             logger.exception("Merge operation failed")
             if self.on_error:
                 self.on_error(error_msg)
+        # Intentional: catch any other runtime error so the UI always returns to idle (finally runs).
         except Exception as e:
             error_msg = str(e)
             logger.exception("Merge operation failed")

@@ -4,20 +4,30 @@ This file collects suggestions for improving the codebase. They are non-blocking
 
 ---
 
+## Code Cleanup (Epic summary)
+
+- **Removed / updated**: Stale references to `ProcessingResult`, `run_merge`, `process_file`, and `as_processing_result` have been removed from ARCHITECTURE.md, CODE_IMPROVEMENTS.md, and DEPRECATION.md. The pipeline uses only `MergeResult`.
+- **Single source of truth**: Default column canonical value is `pdf_merger.models.defaults.DEFAULT_SERIAL_NUMBERS_COLUMN`; `core.csv_serial_constants` must stay in sync (test in `tests/unit/core/test_constants_sync.py`).
+- **Legacy APIs kept (documented)**: `find_pdf_file` and `process_row` (bool-returning) are kept for backward compatibility and tests; prefer `find_source_file` and `process_row_with_models` + `MergeResult`.
+- **Core enums**: `MatchConfidence` and `MatchBehavior` are no longer re-exported from `core.enums`; use `pdf_merger.models.enums` or `pdf_merger.matching` for matching.
+- **Config**: All config load sites use `AppConfig.from_validated_dict()` so no raw dict builds config without validation.
+
+---
+
 ## Exceptions
 
 - **`PDFProcessingError`**  
-  Defined in `pdf_merger/utils/exceptions.py` and tested, but never raised in production. Consider either using it in PDF operations (e.g. `pdf_merger.py`, `streaming_pdf_merger.py`) when a PDF read/merge/write fails, or documenting it as a reserved type for future use.
+  Used in production: raised by `operations.pdf_merger` and `operations.streaming_pdf_merger` on PDF read/merge/write failures. Callers (`row_pipeline`, `merge_processor`) catch it and map to row-level results.
 
 ---
 
 ## Result types and reporting
 
 - **`ProcessingResult` and legacy API**  
-  `ProcessingResult` is deprecated in favor of `MergeResult`, but the pipeline still returns/uses it internally (`merge_processor.process_job` builds `ProcessingResult`; `result_reporter` and `result_view` accept both). A full migration would have `process_job` return only `MergeResult` and remove `ProcessingResult` and `as_processing_result` from the public API (per `DEPRECATION.md`).
+  Removed per `DEPRECATION.md`. The pipeline uses only `MergeResult`; `process_job` returns `MergeResult`; `result_reporter` and `result_view` work with `MergeResult` / `ResultView`.
 
 - **`format_result_detailed`**  
-  Addressed: the UI uses it in the "View detailed log" action (`_show_detailed_report`), which opens a dialog showing `format_result_detailed(result)` after a merge.
+  The UI uses it in the "View detailed log" action (`_show_detailed_report`), which opens a dialog showing `format_result_detailed(result)` after a merge.
 
 ---
 
@@ -33,11 +43,8 @@ This file collects suggestions for improving the codebase. They are non-blocking
 
 ## Deprecations and removal
 
-- **`run_merge`**  
-  Deprecated in favor of `run_merge_job`; still present for backward compatibility. Plan to remove in 2.0 as per `DEPRECATION.md`.
-
-- **`process_file`**  
-  Same as above; callers should use `load_job_from_file` + `process_job` and `as_processing_result` if needed.
+- **`run_merge`** and **`process_file`**  
+  Removed as of 2.0 per `DEPRECATION.md`. Use `run_merge_job` or `load_job_from_file` + `process_job`.
 
 ---
 

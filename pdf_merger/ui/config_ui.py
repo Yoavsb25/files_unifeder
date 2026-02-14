@@ -10,6 +10,47 @@ from typing import Any, Callable, List, Optional, Tuple
 from ..utils.exceptions import PDFMergerError
 
 
+def load_config_into_ui(
+    config: Any,
+    column_entry: Any,
+    input_selector: Any,
+    pdf_dir_selector: Any,
+    output_selector: Any,
+    set_path_attr: Callable[[str, Path], None],
+    log_info: Callable[[str], None],
+    log_warning: Callable[[str], None],
+    on_update_state: Callable[[], None],
+) -> None:
+    """
+    Build path applyments and load config into UI (column + paths). Single entry point for app.
+    """
+    from ..utils.validators import validate_file, validate_folder
+
+    def validate_input(p: Path) -> None:
+        validate_file(p, required_column=config.required_column)
+
+    def validate_source(p: Path) -> None:
+        validate_folder(p, "Source")
+
+    def validate_output(p: Path) -> None:
+        p.mkdir(parents=True, exist_ok=True)
+
+    path_applyments: List[Tuple[Optional[str], str, Any, Callable[[Path], None], str]] = [
+        (config.input_file, "input_file_path", input_selector, validate_input, "input file"),
+        (config.pdf_dir, "pdf_dir_path", pdf_dir_selector, validate_source, "source directory"),
+        (config.output_dir, "output_dir_path", output_selector, validate_output, "output directory"),
+    ]
+    apply_config_to_ui(
+        config,
+        column_entry=column_entry,
+        path_applyments=path_applyments,
+        set_path_attr=set_path_attr,
+        log_info=log_info,
+        log_warning=log_warning,
+        on_update_state=on_update_state,
+    )
+
+
 def apply_config_to_ui(
     config: Any,
     *,

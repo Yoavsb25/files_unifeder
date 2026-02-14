@@ -44,9 +44,9 @@ class TestRunMergeJob:
         assert mock_logger.info.called
     
     @patch('pdf_merger.core.job_loader.read_data_file')
-    @patch('pdf_merger.core.job_loader.logger')
+    @patch('pdf_merger.core.merge_orchestrator.logger')
     def test_run_merge_job_read_error(self, mock_logger, mock_read_data, tmp_path):
-        """Test merge job when file reading fails (error logged in job_loader)."""
+        """Test merge job when file reading fails: orchestrator catches JobLoadError and returns failed result."""
         input_file = tmp_path / "input.csv"
         pdf_dir = tmp_path / "pdfs"
         output_dir = tmp_path / "output"
@@ -57,6 +57,9 @@ class TestRunMergeJob:
         assert result.total_rows == 0
         assert result.successful_merges == 0
         assert result.job_id == "test-job"
+        assert len(result.failed_rows) == 1
+        assert len(result.row_results) == 1
+        assert "File read error" in (result.row_results[0].error_message or "")
         mock_logger.error.assert_called_once()
     
     @patch('pdf_merger.core.merge_orchestrator.process_job')

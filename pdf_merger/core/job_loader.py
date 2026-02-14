@@ -1,6 +1,6 @@
 """
 Job loader: load rows from file into a MergeJob.
-Single place for file read and row loading; used by orchestrator and process_file.
+Single place for file read and row loading; used by the orchestrator.
 """
 
 from pathlib import Path
@@ -8,9 +8,9 @@ from typing import Optional
 
 from .csv_excel_reader import read_data_file
 from .types import ProgressCallback, PROGRESS_LOADING
-from ..models import MergeJob, MergeResult, Row
+from ..models import MergeJob, Row
 from ..utils.logging_utils import get_logger
-from ..utils.exceptions import InvalidFileFormatError, MissingColumnError
+from ..utils.exceptions import InvalidFileFormatError, MissingColumnError, JobLoadError
 
 logger = get_logger("pdf_merger.core.job_loader")
 
@@ -24,9 +24,12 @@ def load_job_from_file(
     on_progress: Optional[ProgressCallback] = None,
 ) -> MergeJob:
     """
-    Load input file and build a MergeJob with rows. Single implementation for orchestrator and process_file.
+    Load input file and build a MergeJob with rows. Single implementation for the orchestrator.
 
-    On read error, returns an empty MergeJob (caller can return empty MergeResult).
+    Returns a MergeJob with rows only when the file was read successfully (including empty file).
+    On OSError, InvalidFileFormatError, or MissingColumnError, re-raises as-is.
+    On any other exception during read, raises JobLoadError so callers can distinguish load
+    failure from "zero rows."
 
     Args:
         input_file: Path to CSV or Excel file
@@ -37,7 +40,13 @@ def load_job_from_file(
         on_progress: Optional callback (step, current, total, message)
 
     Returns:
-        MergeJob with rows loaded; may be empty on error
+        MergeJob with rows loaded (empty list if file has no data rows).
+
+    Raises:
+        OSError: On file I/O errors.
+        InvalidFileFormatError: On unsupported or invalid file format.
+        MissingColumnError: When required_column is missing.
+        JobLoadError: On any other error during load (e.g. unexpected parse failure).
     """
     job = MergeJob.create(
         input_file=input_file,
@@ -55,8 +64,8 @@ def load_job_from_file(
     except (OSError, InvalidFileFormatError, MissingColumnError):
         raise
     except Exception as e:
-        logger.error(f"Unknown error during load: %s", e)
-        return job  # empty rows
+        logger.error("Unknown error during load: %s", e)
+        raise JobLoadError(f"Failed to load job: {e}", path=input_file, cause=e) from e
     total_rows = job.get_total_rows()
     if on_progress:
         on_progress(PROGRESS_LOADING, total_rows, total_rows, f"Loaded {total_rows} rows")

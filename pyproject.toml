@@ -1,0 +1,19 @@
+[project]
+name = "pdf-merger"
+version = "1.0.0"
+description = "PDF Batch Merger"
+requires-python = ">=3.9"
+dependencies = []
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+exclude = ["build", "dist", ".git", "__pycache__", "build_config"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
