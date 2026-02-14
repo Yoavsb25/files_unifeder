@@ -35,14 +35,14 @@ class FileSelectionHandler:
         self.on_file_selected = on_file_selected
         self.on_error = on_error
         self.on_validation_error = on_validation_error
-    
+
     def _handle_error(self, message: str, field: str):
         """Dispatch error to validation or generic handler."""
         if self.on_validation_error:
             self.on_validation_error(field, message)
         if self.on_error:
             self.on_error(message)
-    
+
     def select_input_file(
         self,
         required_column: Optional[str] = None,

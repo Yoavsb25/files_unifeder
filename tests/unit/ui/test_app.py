@@ -300,7 +300,7 @@ class TestPDFMergerApp:
         app._show_error("Error message")
 
         app._log_error.assert_called_once_with("Error message")
-    
+
     def test_run_merge_success(self, tmp_path):
         """Test running merge operation successfully."""
         app = self._create_mock_app()
@@ -365,7 +365,6 @@ class TestPDFMergerApp:
             state="disabled", text="Processing…"
         )
         app.log_area.clear.assert_called_once()
-        # No decorative separator lines; one blank line via _log("")
         assert app._log_info.call_count >= 4  # Start message and paths
     
     def test_on_merge_complete_success(self):
@@ -396,7 +395,7 @@ class TestPDFMergerApp:
         assert call_kw["pdfs_created"] == 5
         assert call_kw["skipped"] == 0
         assert call_kw["failed"] == 0
-    
+
     def test_on_merge_error(self):
         """Test merge error handler."""
         app = self._create_mock_app()
@@ -409,7 +408,7 @@ class TestPDFMergerApp:
         assert app.merge_handler.is_processing is False
         app.run_button.configure.assert_called_with(state="normal", text="Run Merge")
         app._log_error.assert_called_once_with("Error message")
-    
+
     def test_update_ui_state_all_selected(self):
         """Test updating UI state when all paths are selected."""
         app = self._create_mock_app()

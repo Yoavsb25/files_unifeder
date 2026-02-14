@@ -16,7 +16,7 @@ from ..core.csv_excel_reader import get_file_columns
 logger = get_logger("validators")
 
 # Module-level constants
-DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.GOLDFARB_SERIAL_NUMBER_COLUMN
 SERIAL_NUMBER_PREFIX = Constants.SERIAL_NUMBER_PREFIX
 SERIAL_NUMBER_PREFIX_LOWER = Constants.SERIAL_NUMBER_PREFIX_LOWER
 

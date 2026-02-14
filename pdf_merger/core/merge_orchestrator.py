@@ -15,7 +15,7 @@ from ..utils.logging_utils import get_logger
 logger = get_logger("core.merge_orchestrator")
 
 # Module-level constants
-DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.GOLDFARB_SERIAL_NUMBER_COLUMN
 
 
 def run_merge(

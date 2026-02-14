@@ -436,7 +436,7 @@ class PDFMergerApp(ctk.CTk):
     def _show_error(self, message: str):
         """Show error message."""
         self._log_error(message)
-    
+
     def _run_merge(self):
         """Run the merge operation."""
         if not self.license_valid:
@@ -484,7 +484,7 @@ class PDFMergerApp(ctk.CTk):
             self._log_warning(f"Skipped: {skipped_count}")
         if failed_count > 0:
             self._log_error(f"Failed: {failed_count}")
-            if result.failed_rows:
+        if result.failed_rows:
                 failed_str = ", ".join(map(str, result.failed_rows))
                 max_len = Constants.MAX_DISPLAY_STRING_LENGTH
                 if len(failed_str) > max_len:

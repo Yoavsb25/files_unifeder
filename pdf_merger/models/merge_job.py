@@ -14,7 +14,7 @@ from ..core.constants import Constants
 logger = get_logger("models.merge_job")
 
 # Module-level constants
-DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
+DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.GOLDFARB_SERIAL_NUMBER_COLUMN
 
 
 @dataclass
