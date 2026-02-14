@@ -1,12 +1,16 @@
 """
 Merge orchestrator module.
-Wrapper around process_file and process_job for UI consumption.
+
+Orchestrator: UI-facing API and job construction (run_merge, run_merge_job);
+loads rows from file and builds MergeJob. Processor (merge_processor): job
+execution and row-level logic (process_job, process_row_with_models).
 """
 
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
 from .merge_processor import process_file, process_job, ProcessingResult
+from .types import ProgressCallback
 from ..models import MergeJob, MergeResult, Row
 from .csv_excel_reader import read_data_file
 from .constants import Constants
@@ -14,16 +18,13 @@ from ..utils.logging_utils import get_logger
 
 logger = get_logger("core.merge_orchestrator")
 
-# Module-level constants
-DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.GOLDFARB_SERIAL_NUMBER_COLUMN
-
 
 def run_merge(
     input_file: Path,
     pdf_dir: Path,
     output_dir: Path,
     required_column: Optional[str] = None,
-    on_progress: Optional[Callable[[str, int, int, str], None]] = None,
+    on_progress: Optional[ProgressCallback] = None,
 ) -> ProcessingResult:
     """
     Run the merge operation (legacy interface).
@@ -41,7 +42,7 @@ def run_merge(
     Returns:
         ProcessingResult with statistics
     """
-    column = required_column or DEFAULT_SERIAL_NUMBERS_COLUMN
+    column = required_column or Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
 
     logger.info(f"Starting merge operation")
     logger.info(f"  Input file: {input_file}")
@@ -72,10 +73,10 @@ def run_merge_job(
     input_file: Path,
     pdf_dir: Path,
     output_dir: Path,
-    required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
+    required_column: str = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN,
     job_id: Optional[str] = None,
     fail_on_ambiguous: bool = True,
-    on_progress: Optional[Callable[[str, int, int, str], None]] = None,
+    on_progress: Optional[ProgressCallback] = None,
 ) -> MergeResult:
     """
     Run the merge operation using domain models.

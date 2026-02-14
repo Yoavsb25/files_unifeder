@@ -74,7 +74,16 @@ class AppConfig:
     def get_output_dir_path(self) -> Optional[Path]:
         """Get output directory as Path object."""
         return Path(self.output_dir) if self.output_dir else None
-    
+
+    def _resolve_required_column(self, other: 'AppConfig') -> str:
+        """
+        Resolve required_column when merging: use other's value unless it is the
+        default and self has a non-default override (other overrides self in all other cases).
+        """
+        if other.required_column != DEFAULT_SERIAL_NUMBERS_COLUMN:
+            return other.required_column
+        return self.required_column
+
     def merge(self, other: 'AppConfig') -> 'AppConfig':
         """
         Merge another config into this one (other takes precedence for non-None values).
@@ -85,15 +94,27 @@ class AppConfig:
         Returns:
             New merged config
         """
+        input_file = other.input_file if other.input_file else self.input_file
+        pdf_dir = other.pdf_dir if other.pdf_dir else self.pdf_dir
+        output_dir = other.output_dir if other.output_dir else self.output_dir
+        required_column = self._resolve_required_column(other)
+        metrics_enabled = other.metrics_enabled if hasattr(other, 'metrics_enabled') else self.metrics_enabled
+        telemetry_enabled = other.telemetry_enabled if hasattr(other, 'telemetry_enabled') else self.telemetry_enabled
+        crash_reporting_enabled = (
+            other.crash_reporting_enabled if hasattr(other, 'crash_reporting_enabled') else self.crash_reporting_enabled
+        )
+        fail_on_ambiguous_matches = (
+            other.fail_on_ambiguous_matches if hasattr(other, 'fail_on_ambiguous_matches') else self.fail_on_ambiguous_matches
+        )
         return AppConfig(
-            input_file=other.input_file if other.input_file else self.input_file,
-            pdf_dir=other.pdf_dir if other.pdf_dir else self.pdf_dir,
-            output_dir=other.output_dir if other.output_dir else self.output_dir,
-            required_column=other.required_column if other.required_column != DEFAULT_SERIAL_NUMBERS_COLUMN or self.required_column == DEFAULT_SERIAL_NUMBERS_COLUMN else self.required_column,
-            metrics_enabled=other.metrics_enabled if hasattr(other, 'metrics_enabled') else self.metrics_enabled,
-            telemetry_enabled=other.telemetry_enabled if hasattr(other, 'telemetry_enabled') else self.telemetry_enabled,
-            crash_reporting_enabled=other.crash_reporting_enabled if hasattr(other, 'crash_reporting_enabled') else self.crash_reporting_enabled,
-            fail_on_ambiguous_matches=other.fail_on_ambiguous_matches if hasattr(other, 'fail_on_ambiguous_matches') else self.fail_on_ambiguous_matches
+            input_file=input_file,
+            pdf_dir=pdf_dir,
+            output_dir=output_dir,
+            required_column=required_column,
+            metrics_enabled=metrics_enabled,
+            telemetry_enabled=telemetry_enabled,
+            crash_reporting_enabled=crash_reporting_enabled,
+            fail_on_ambiguous_matches=fail_on_ambiguous_matches,
         )
 
 
@@ -242,10 +263,10 @@ def load_config(
     Returns:
         AppConfig with merged configuration
     """
-    # Start with defaults
+    # Start with defaults (lowest priority)
     config = AppConfig()
     
-    # 3. Load per-project preset (lowest priority)
+    # 3. Load per-project preset (applied after defaults, before user config and env)
     project_preset = load_project_preset(start_path)
     if project_preset:
         config = config.merge(project_preset)

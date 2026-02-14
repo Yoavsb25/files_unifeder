@@ -38,8 +38,10 @@ from .theme import (
 
 
 class LogHandler:
-    """Custom log handler that writes to GUI text widget."""
-    
+    """Custom log handler that writes to GUI text widget.
+    Buffers messages and flushes to the widget on flush() to batch updates and reduce UI flicker.
+    """
+
     def __init__(self, text_widget):
         self.text_widget = text_widget
         self.buffer = []

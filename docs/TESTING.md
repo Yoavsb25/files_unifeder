@@ -42,33 +42,54 @@ tests/
 ├── __init__.py
 ├── README.md                # Test documentation
 │
-└── unit/                    # Unit tests organized by category
-    ├── data/                # Data processing tests
-    │   ├── test_data_parser.py      # Serial number parsing
-    │   ├── test_file_reader.py      # CSV/Excel reading
-    │   └── test_validators.py       # Validation functions
-    │
-    ├── operations/          # Operations tests
-    │   ├── test_pdf_operations.py   # PDF/Excel finding and merging
-    │   ├── test_excel_converter.py  # Excel to PDF conversion
-    │   └── test_processor.py        # Main processing
+└── unit/                    # Unit tests organized by package
+    ├── config/              # Configuration tests
+    │   ├── test_config_manager.py   # Config loading, merge, precedence
+    │   └── test_config_schema.py    # Schema validation
     │
     ├── core/                # Core module tests
-    │   ├── test_core.py             # Core business logic
-    │   └── test_core_init.py        # Module exports
+    │   ├── test_merge_processor.py  # Job execution, row processing
+    │   ├── test_merge_orchestrator.py  # run_merge, run_merge_job
+    │   ├── test_serial_number_parser.py  # Serial number parsing
+    │   ├── test_csv_excel_reader.py  # CSV/Excel reading
+    │   ├── test_result_reporter.py # Result formatting
+    │   └── test_core_module_exports.py  # Module exports
+    │
+    ├── operations/          # Operations tests
+    │   ├── test_pdf_merger.py       # PDF finding and merging
+    │   ├── test_streaming_pdf_merger.py  # Streaming PDF operations
+    │   └── test_excel_to_pdf_converter.py  # Excel to PDF conversion
     │
     ├── ui/                  # UI tests
-    │   ├── test_ui.py               # GUI application
-    │   └── test_ui_init.py          # Module exports
+    │   ├── test_app.py              # GUI application
+    │   ├── test_components.py        # UI components
+    │   ├── test_handlers.py         # Event handlers
+    │   ├── test_license_ui.py      # License display
+    │   └── test_ui_module_exports.py  # Module exports
+    │
+    ├── models/              # Domain model tests
+    │   ├── test_row.py              # Row model
+    │   ├── test_merge_job.py        # MergeJob model
+    │   └── test_merge_result.py     # MergeResult model
     │
     ├── licensing/           # Licensing tests
-    │   ├── test_licensing.py        # License system
-    │   └── test_licensing_init.py   # Module exports
+    │   ├── test_license_manager.py   # License validation
+    │   └── test_licensing_module_exports.py  # Module exports
+    │
+    ├── matching/            # Matching rules tests
+    │   └── test_rules.py            # Formal matching rules
+    │
+    ├── observability/       # Observability tests
+    │   ├── test_metrics.py          # Metrics collection
+    │   ├── test_telemetry.py        # Telemetry
+    │   └── test_crash_reporting.py  # Crash reporting
     │
     └── utils/               # Utility tests
-        ├── test_logger.py           # Logging
-        ├── test_config.py            # Configuration
-        └── test_exceptions.py       # Exception classes
+        ├── test_validators.py       # Input validation
+        ├── test_exceptions.py      # Exception classes
+        ├── test_logging_utils.py   # Logging
+        ├── test_path_utils.py      # Path handling
+        └── test_utils_module_exports.py  # Module exports
 ```
 
 ### Test File Organization
@@ -134,19 +155,19 @@ pytest -v
 #### Run Specific Test File
 
 ```bash
-pytest tests/test_validators.py
+pytest tests/unit/utils/test_validators.py
 ```
 
 #### Run Specific Test Class
 
 ```bash
-pytest tests/test_validators.py::TestValidateSerialNumber
+pytest tests/unit/utils/test_validators.py::TestValidateSerialNumber
 ```
 
 #### Run Specific Test Function
 
 ```bash
-pytest tests/test_validators.py::TestValidateSerialNumber::test_valid_uppercase_serial_number
+pytest tests/unit/utils/test_validators.py::TestValidateSerialNumber::test_valid_uppercase_serial_number
 ```
 
 #### Run Tests Matching a Pattern
@@ -156,6 +177,8 @@ pytest tests/test_validators.py::TestValidateSerialNumber::test_valid_uppercase_
 pytest -k serial
 
 # Run all tests in test_validators.py
+pytest tests/unit/utils/test_validators.py
+# Or by keyword
 pytest -k validators
 ```
 
@@ -295,7 +318,7 @@ Test with mocked external dependencies.
 
 **Example:**
 ```python
-@patch('pdf_merger.pdf_operations._get_pdf_libraries')
+@patch('pdf_merger.operations.pdf_merger._get_pdf_libraries')
 def test_merge_pdfs_mocked(mock_get_libraries, tmp_path):
     """Test PDF merging with mocked PDF library."""
     # Setup mocks
@@ -541,7 +564,7 @@ def test_with_file(tmp_path):
 1. Use mocks instead of real file I/O
 2. Use `tmp_path` instead of creating files in actual directories
 3. Avoid network calls (mock them)
-4. Run specific tests during development: `pytest tests/test_specific.py`
+4. Run specific tests during development: `pytest tests/unit/core/test_merge_processor.py`
 
 ### Issue: Coverage report shows 0%
 

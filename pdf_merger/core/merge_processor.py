@@ -7,7 +7,9 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
+
+from .types import ProgressCallback
 
 from ..operations.pdf_merger import find_source_file, merge_pdfs
 from ..operations.excel_to_pdf_converter import convert_excel_to_pdf
@@ -30,8 +32,10 @@ logger = get_logger("merge_processor")
 # Module-level constants
 EXCEL_FILE_EXTENSIONS = Constants.EXCEL_FILE_EXTENSIONS
 OUTPUT_FILENAME_PATTERN = Constants.OUTPUT_FILENAME_PATTERN
-DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.GOLDFARB_SERIAL_NUMBER_COLUMN
+DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
 BYTES_PER_MB = Constants.BYTES_PER_MB
+# When listing missing files in progress, show full list only if at or below this count
+MAX_MISSING_TO_LIST = 3
 
 
 @dataclass
@@ -332,7 +336,7 @@ def process_row_with_models(
 def process_job(
     job: MergeJob,
     fail_on_ambiguous: bool = True,
-    on_progress: Optional[Callable[[str, int, int, str], None]] = None,
+    on_progress: Optional[ProgressCallback] = None,
 ) -> MergeResult:
     """
     Process a merge job using domain models.
@@ -402,7 +406,7 @@ def process_job(
                 # Group error details per row (single summary instead of one line per file)
                 missing = row_result.files_missing or []
                 if missing:
-                    if len(missing) <= 3:
+                    if len(missing) <= MAX_MISSING_TO_LIST:
                         detail = f"  • {len(missing)} files not found ({', '.join(missing)})"
                     else:
                         detail = f"  • {len(missing)} files not found"
@@ -441,7 +445,7 @@ def process_file(
     source_folder: Path,
     output_folder: Path,
     required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
-    on_progress: Optional[Callable[[str, int, int, str], None]] = None,
+    on_progress: Optional[ProgressCallback] = None,
 ) -> ProcessingResult:
     """
     Process an entire data file and merge PDFs and Excel files for each row.

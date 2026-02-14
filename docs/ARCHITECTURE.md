@@ -168,58 +168,75 @@ sequenceDiagram
 files_unifeder/
 ├── main.py                      # Application entry point
 ├── pdf_merger/                   # Main package
-│   ├── __init__.py              # Public API exports
-│   ├── config.py                # Configuration settings with precedence
-│   ├── config_schema.py         # Configuration schema and validation
-│   ├── logger.py                # Logging configuration
-│   ├── exceptions.py            # Custom exception classes
+│   ├── __init__.py              # Public API exports (run_merge, run_merge_job, load_config, etc.)
 │   │
-│   ├── core/                    # Business logic layer
-│   │   ├── merger.py           # Core merge orchestration
-│   │   └── reporter.py         # Result formatting
+│   ├── config/                  # Configuration
+│   │   ├── config_manager.py    # Configuration loading with precedence (env > user config > preset > defaults)
+│   │   └── config_schema.py     # Schema and validation
+│   │
+│   ├── core/                    # Business logic and orchestration
+│   │   ├── merge_orchestrator.py  # UI-facing API, job construction, row loading (orchestrator)
+│   │   ├── merge_processor.py    # Job execution and row-level logic (processor)
+│   │   ├── constants.py         # Shared constants
+│   │   ├── csv_excel_reader.py  # CSV/Excel file reading
+│   │   ├── serial_number_parser.py  # Serial number parsing
+│   │   ├── result_reporter.py   # Result formatting
+│   │   └── enums.py             # Shared enums
 │   │
 │   ├── models/                  # Domain models
-│   │   ├── row.py              # Row data model
-│   │   ├── merge_job.py        # Merge job model
-│   │   └── merge_result.py     # Merge result model
+│   │   ├── row.py               # Row data model
+│   │   ├── merge_job.py         # Merge job model
+│   │   └── merge_result.py      # Merge result model
 │   │
 │   ├── matching/                # Matching rules
-│   │   ├── rules.py            # Formal matching rules
-│   │   └── spec.md             # Matching specification
+│   │   ├── rules.py             # Formal matching rules
+│   │   └── spec.md              # Matching specification
 │   │
-│   ├── utils/                   # Utility modules
-│   │   └── path_utils.py       # Cross-platform path handling
+│   ├── operations/              # File-format operations
+│   │   ├── pdf_merger.py        # PDF finding and merging
+│   │   ├── streaming_pdf_merger.py  # Streaming PDF operations
+│   │   └── excel_to_pdf_converter.py  # Excel to PDF conversion
+│   │
+│   ├── utils/                   # Utilities
+│   │   ├── path_utils.py        # Cross-platform path handling
+│   │   ├── validators.py        # Input validation
+│   │   ├── exceptions.py        # Custom exception classes
+│   │   └── logging_utils.py     # Logging configuration
 │   │
 │   ├── observability/           # Observability features
 │   │   ├── metrics.py          # Metrics collection
 │   │   ├── telemetry.py        # Telemetry (opt-in)
-│   │   └── crash_reporting.py  # Crash reporting (opt-in)
-│   │
-│   ├── processor.py            # Main processing orchestration
-│   ├── validators.py            # Input validation functions
-│   ├── data_parser.py           # Serial number parsing
-│   ├── file_reader.py           # CSV/Excel file reading
-│   ├── pdf_operations.py        # PDF finding and merging
-│   ├── pdf_operations_streaming.py  # Streaming PDF operations
-│   ├── excel_converter.py       # Excel to PDF conversion
+│   │   └── crash_reporting.py   # Crash reporting (opt-in)
 │   │
 │   ├── ui/                      # User interface
-│   │   ├── app.py              # CustomTkinter GUI application
+│   │   ├── app.py               # CustomTkinter GUI application
+│   │   ├── handlers.py          # Event handlers (merge, file selection)
+│   │   ├── components.py       # Reusable UI components
+│   │   ├── theme.py             # Theme and styling
+│   │   ├── license_ui.py        # License display helpers
 │   │   └── __init__.py
 │   │
 │   └── licensing/               # License management
-│       ├── license_manager.py  # License validation with UX improvements
-│       ├── license_model.py    # License data model with expiry warnings
+│       ├── license_manager.py   # License validation with UX improvements
+│       ├── license_model.py     # License data model with expiry warnings
 │       └── license_signer.py   # RSA signing/verification
 │
 ├── tests/                       # Test suite
-│   ├── test_*.py               # Unit tests for each module
-│   └── README.md               # Testing documentation
+│   └── unit/                    # Unit tests by package
+│       ├── config/              # test_config_manager.py, test_config_schema.py
+│       ├── core/                # test_merge_processor.py, test_merge_orchestrator.py, etc.
+│       ├── operations/          # test_pdf_merger.py, test_excel_to_pdf_converter.py, etc.
+│       ├── ui/                  # test_app.py, test_components.py, test_handlers.py, etc.
+│       ├── models/              # test_row.py, test_merge_job.py, test_merge_result.py
+│       ├── utils/               # test_validators.py, test_exceptions.py, etc.
+│       ├── licensing/           # test_license_manager.py, etc.
+│       ├── matching/            # test_rules.py
+│       └── observability/       # test_metrics.py, etc.
 │
 ├── tools/                       # Development tools
 │   └── license_generator.py    # License generation tool
 │
-└── requirements.txt            # Python dependencies
+└── requirements.txt             # Python dependencies
 ```
 
 ### Core Components
@@ -249,17 +266,24 @@ flowchart TD
 
 #### 2. Core Module (`pdf_merger/core/`)
 
-- **`merger.py`**: High-level merge orchestration
-  - Coordinates validation, processing, and result formatting
-  - Decouples UI from business logic
-  
-- **`reporter.py`**: Result formatting
-  - Formats processing results for display
-  - Generates summary and detailed reports
+**Orchestrator vs processor split:** The orchestrator (`merge_orchestrator.py`) is the UI-facing API and handles job construction and row loading; the processor (`merge_processor.py`) handles job execution and row-level logic.
 
-#### 3. Processor (`pdf_merger/processor.py`)
+- **`merge_orchestrator.py`**: UI-facing API and job construction
+  - `run_merge()`: Legacy entry point (returns `ProcessingResult`)
+  - `run_merge_job()`: Recommended entry point (returns `MergeResult`); builds `MergeJob`, loads rows from file, then delegates to processor
+  - Single source for default column: uses `Constants.DEFAULT_SERIAL_NUMBERS_COLUMN` from `constants.py`
 
-- **Responsibility**: Main processing orchestration using domain models
+- **`merge_processor.py`**: Job execution and row-level logic
+  - `process_file()`: Process entire CSV/Excel file (legacy, backward compatible)
+  - `process_job()`: Process `MergeJob` using domain models (recommended)
+  - `process_row_with_models()`: Process single row using `Row` model
+  - Returns `MergeResult` with detailed per-row results
+
+- **`result_reporter.py`**: Result formatting for display (summary and detailed reports)
+
+#### 3. Processor (`pdf_merger/core/merge_processor.py`)
+
+- **Responsibility**: Job execution and row-level processing using domain models
 - **Key Functions**:
   - `process_file()`: Process entire CSV/Excel file (legacy, backward compatible)
   - `process_job()`: Process MergeJob using domain models (recommended)
@@ -273,13 +297,13 @@ flowchart TD
   - Records metrics (processing time, file sizes, success rates, ambiguous matches)
   - Tracks counters and timers for performance analysis
 - **Excel Handling**:
-  - Finds both PDF and Excel files using formal matching rules
-  - Converts Excel files to temporary PDFs using `convert_excel_to_pdf()`
+  - Finds both PDF and Excel files using formal matching rules (via `operations/pdf_merger.py`)
+  - Converts Excel files to temporary PDFs using `convert_excel_to_pdf()` from `operations/excel_to_pdf_converter.py`
   - Merges all PDFs (original + converted Excel PDFs) with streaming support
   - Automatically cleans up temporary PDF files after merging
   - Handles conversion errors gracefully (logs and continues with other files)
 
-#### 4. Validators (`pdf_merger/validators.py`)
+#### 4. Validators (`pdf_merger/utils/validators.py`)
 
 - **Responsibility**: Input validation
 - **Validates**:
@@ -289,24 +313,24 @@ flowchart TD
   - Serial number format (GRNW_ prefix)
   - Complete path sets
 
-#### 5. File Reader (`pdf_merger/file_reader.py`)
+#### 5. File Reader (`pdf_merger/core/csv_excel_reader.py`)
 
 - **Responsibility**: Reading CSV and Excel files
 - **Features**:
   - Auto-detects file type (.csv, .xlsx, .xls)
   - Auto-detects CSV delimiter (comma, semicolon, tab)
   - Unified interface for all file types
-  - Returns pandas DataFrame
+  - Returns iterable of row data (dicts)
 
-#### 6. Data Parser (`pdf_merger/data_parser.py`)
+#### 6. Serial Number Parser (`pdf_merger/core/serial_number_parser.py`)
 
 - **Responsibility**: Parsing serial numbers from strings
 - **Features**:
   - Handles comma-separated values
   - Strips whitespace
-  - Validates format
+  - Validates format (used by `Row.from_raw_data` and validators)
 
-#### 7. PDF Operations (`pdf_merger/pdf_operations.py`)
+#### 7. PDF Operations (`pdf_merger/operations/pdf_merger.py`)
 
 - **Responsibility**: PDF file operations with streaming support
 - **Features**:
@@ -330,7 +354,7 @@ flowchart TD
   - Supports both pypdf and PyPDF2 libraries (with pypdf preferred)
   - Cross-platform path handling via `utils/path_utils.py`
 
-#### 7b. PDF Streaming Operations (`pdf_merger/pdf_operations_streaming.py`)
+#### 7b. PDF Streaming Operations (`pdf_merger/operations/streaming_pdf_merger.py`)
 
 - **Responsibility**: Memory-efficient PDF merging for large files
 - **Features**:
@@ -342,7 +366,7 @@ flowchart TD
   - Reduces memory footprint for large PDFs
   - Progress logging for files with >100 pages
 
-#### 7a. Excel Converter (`pdf_merger/excel_converter.py`)
+#### 7a. Excel Converter (`pdf_merger/operations/excel_to_pdf_converter.py`)
 
 - **Responsibility**: Converting Excel files to PDF format with advanced rendering
 - **Features**:
@@ -368,7 +392,7 @@ flowchart TD
   - Preserves data structure in PDF format
   - Splits tables wider than 8 columns (configurable) across pages
 
-#### 8. UI Module (`pdf_merger/ui/app.py`)
+#### 8. UI Module (`pdf_merger/ui/`)
 
 - **Responsibility**: GUI application with configuration integration
 - **Technology**: CustomTkinter
@@ -718,8 +742,8 @@ graph LR
 4. **Defaults** - Built-in default values
 
 **Configuration Components**:
-- `config.py` - Main configuration management with precedence resolution
-- `config_schema.py` - Schema validation and path validation
+- `config/config_manager.py` - Main configuration management with precedence resolution (`load_config`, `AppConfig`, `save_config`)
+- `config/config_schema.py` - Schema validation and path validation
 - All configuration values are validated (paths must exist, column names must be valid)
 - Invalid values are logged as warnings and defaults are used
 - Supports observability settings (metrics, telemetry, crash reporting)

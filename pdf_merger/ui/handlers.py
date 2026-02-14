@@ -11,6 +11,7 @@ from ..utils.validators import validate_file, validate_folder
 from ..utils.exceptions import PDFMergerError
 from ..core.constants import Constants
 from ..core import run_merge_job, format_result_summary
+from ..core.types import ProgressCallback
 
 DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
 from ..models import MergeResult
@@ -114,7 +115,7 @@ class MergeHandler:
         on_start: Optional[Callable[[], None]] = None,
         on_complete: Optional[Callable[[MergeResult], None]] = None,
         on_error: Optional[Callable[[str], None]] = None,
-        on_progress: Optional[Callable[[str, int, int, str], None]] = None,
+        on_progress: Optional[ProgressCallback] = None,
     ):
         self.on_start = on_start
         self.on_complete = on_complete
@@ -128,6 +129,7 @@ class MergeHandler:
         pdf_dir: Path,
         output_dir: Path,
         required_column: Optional[str] = None,
+        fail_on_ambiguous_matches: bool = True,
     ):
         """Run the merge operation in a separate thread."""
         if self.is_processing:
@@ -146,7 +148,7 @@ class MergeHandler:
         # Run in separate thread
         thread = threading.Thread(
             target=self._merge_worker,
-            args=(input_file, pdf_dir, output_dir, required_column),
+            args=(input_file, pdf_dir, output_dir, required_column, fail_on_ambiguous_matches),
             daemon=True,
         )
         thread.start()
@@ -157,6 +159,7 @@ class MergeHandler:
         pdf_dir: Path,
         output_dir: Path,
         required_column: Optional[str],
+        fail_on_ambiguous_matches: bool,
     ):
         """Worker thread for merge operation."""
         try:
@@ -165,6 +168,7 @@ class MergeHandler:
                 pdf_dir=pdf_dir,
                 output_dir=output_dir,
                 required_column=required_column or DEFAULT_SERIAL_NUMBERS_COLUMN,
+                fail_on_ambiguous=fail_on_ambiguous_matches,
                 on_progress=self.on_progress,
             )
 

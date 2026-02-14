@@ -452,6 +452,7 @@ class PDFMergerApp(ctk.CTk):
             pdf_dir=self.pdf_dir_path,
             output_dir=self.output_dir_path,
             required_column=self._get_column(),
+            fail_on_ambiguous_matches=self.config.fail_on_ambiguous_matches,
         )
     
     def _on_merge_start(self):
