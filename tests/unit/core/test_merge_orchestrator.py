@@ -75,7 +75,7 @@ class TestRunMergeJob:
     """Test cases for run_merge_job function."""
     
     @patch('pdf_merger.core.merge_orchestrator.process_job')
-    @patch('pdf_merger.core.merge_orchestrator.read_data_file')
+    @patch('pdf_merger.core.job_loader.read_data_file')
     @patch('pdf_merger.core.merge_orchestrator.logger')
     def test_run_merge_job_success(self, mock_logger, mock_read_data, mock_process_job, tmp_path):
         """Test successful merge job."""
@@ -104,25 +104,24 @@ class TestRunMergeJob:
         mock_process_job.assert_called_once()
         assert mock_logger.info.called
     
-    @patch('pdf_merger.core.merge_orchestrator.read_data_file')
-    @patch('pdf_merger.core.merge_orchestrator.logger')
+    @patch('pdf_merger.core.job_loader.read_data_file')
+    @patch('pdf_merger.core.job_loader.logger')
     def test_run_merge_job_read_error(self, mock_logger, mock_read_data, tmp_path):
-        """Test merge job when file reading fails."""
+        """Test merge job when file reading fails (error logged in job_loader)."""
         input_file = tmp_path / "input.csv"
         pdf_dir = tmp_path / "pdfs"
         output_dir = tmp_path / "output"
-        
         mock_read_data.side_effect = Exception("File read error")
-        
+
         result = run_merge_job(input_file, pdf_dir, output_dir, job_id="test-job")
-        
+
         assert result.total_rows == 0
         assert result.successful_merges == 0
         assert result.job_id == "test-job"
         mock_logger.error.assert_called_once()
     
     @patch('pdf_merger.core.merge_orchestrator.process_job')
-    @patch('pdf_merger.core.merge_orchestrator.read_data_file')
+    @patch('pdf_merger.core.job_loader.read_data_file')
     @patch('pdf_merger.core.merge_orchestrator.logger')
     def test_run_merge_job_with_fail_on_ambiguous(self, mock_logger, mock_read_data, mock_process_job, tmp_path):
         """Test merge job with fail_on_ambiguous parameter."""
@@ -146,7 +145,7 @@ class TestRunMergeJob:
         assert call_args[1]['fail_on_ambiguous'] is False
     
     @patch('pdf_merger.core.merge_orchestrator.process_job')
-    @patch('pdf_merger.core.merge_orchestrator.read_data_file')
+    @patch('pdf_merger.core.job_loader.read_data_file')
     @patch('pdf_merger.core.merge_orchestrator.logger')
     def test_run_merge_job_with_custom_column(self, mock_logger, mock_read_data, mock_process_job, tmp_path):
         """Test merge job with custom required column."""
@@ -169,7 +168,7 @@ class TestRunMergeJob:
         mock_read_data.assert_called_once_with(input_file)
     
     @patch('pdf_merger.core.merge_orchestrator.process_job')
-    @patch('pdf_merger.core.merge_orchestrator.read_data_file')
+    @patch('pdf_merger.core.job_loader.read_data_file')
     @patch('pdf_merger.core.merge_orchestrator.logger')
     def test_run_merge_job_empty_file(self, mock_logger, mock_read_data, mock_process_job, tmp_path):
         """Test merge job with empty file."""

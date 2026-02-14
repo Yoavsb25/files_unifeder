@@ -123,7 +123,7 @@ class TestProcessFile:
     """Test cases for process_file function. Legacy API; prefer process_job."""
     
     @patch('pdf_merger.core.merge_processor.process_job')
-    @patch('pdf_merger.core.merge_processor.read_data_file')
+    @patch('pdf_merger.core.job_loader.read_data_file')
     def test_process_file_success(self, mock_read, mock_process_job, tmp_path):
         """Test successful processing of a file."""
         file_path = tmp_path / "data.csv"
@@ -158,7 +158,7 @@ class TestProcessFile:
         # The actual folder creation happens in process_job, so we can't assert it exists when mocked
     
     @patch('pdf_merger.core.merge_processor.process_job')
-    @patch('pdf_merger.core.merge_processor.read_data_file')
+    @patch('pdf_merger.core.job_loader.read_data_file')
     def test_process_file_with_failures(self, mock_read, mock_process_job, tmp_path):
         """Test processing file with some row failures."""
         file_path = tmp_path / "data.csv"
@@ -189,7 +189,7 @@ class TestProcessFile:
         assert result.successful_merges == 2
         assert result.failed_rows == [2]  # 1-indexed
     
-    @patch('pdf_merger.core.merge_processor.read_data_file')
+    @patch('pdf_merger.core.job_loader.read_data_file')
     def test_process_file_empty_file(self, mock_read, tmp_path):
         """Test processing an empty file."""
         file_path = tmp_path / "data.csv"
@@ -207,7 +207,7 @@ class TestProcessFile:
         assert result.failed_rows == []
     
     @patch('pdf_merger.core.merge_processor.process_job')
-    @patch('pdf_merger.core.merge_processor.read_data_file')
+    @patch('pdf_merger.core.job_loader.read_data_file')
     def test_process_file_missing_column(self, mock_read, mock_process_job, tmp_path):
         """Test processing file with missing serial_numbers column."""
         file_path = tmp_path / "data.csv"
@@ -239,7 +239,7 @@ class TestProcessFile:
         assert 1 in result.failed_rows  # First row definitely failed
         assert result.successful_merges == 1  # Second row succeeds
     
-    @patch('pdf_merger.core.merge_processor.read_data_file')
+    @patch('pdf_merger.core.job_loader.read_data_file')
     def test_process_file_read_error(self, mock_read, tmp_path):
         """Test processing file when read_data_file raises an error."""
         file_path = tmp_path / "data.csv"
@@ -257,7 +257,7 @@ class TestProcessFile:
         assert result.failed_rows == []
     
     @patch('pdf_merger.core.merge_processor.process_job')
-    @patch('pdf_merger.core.merge_processor.read_data_file')
+    @patch('pdf_merger.core.job_loader.read_data_file')
     def test_process_file_custom_column(self, mock_read, mock_process_job, tmp_path):
         """Test processing file with custom required column."""
         file_path = tmp_path / "data.csv"
@@ -324,27 +324,21 @@ class TestProcessFile:
         warning_calls = [str(call) for call in mock_logger.warning.call_args_list]
         assert any("Invalid serial number format" in str(call) for call in warning_calls)
     
-    @patch('pdf_merger.core.merge_processor.read_data_file')
-    @patch('pdf_merger.core.merge_processor.logger')
+    @patch('pdf_merger.core.job_loader.read_data_file')
+    @patch('pdf_merger.core.job_loader.logger')
     def test_process_file_unexpected_exception(self, mock_logger, mock_read, tmp_path):
-        """Test processing file when an unexpected exception occurs."""
+        """Test processing file when an unexpected exception occurs (error logged in job_loader)."""
         file_path = tmp_path / "data.csv"
         source_folder = tmp_path / "source"
         output_folder = tmp_path / "output"
-        
         source_folder.mkdir()
-        
-        # Make read_data_file raise an unexpected exception
         mock_read.side_effect = RuntimeError("Unexpected error")
-        
+
         result = process_file(file_path, source_folder, output_folder)
-        
-        # Should return a result with zero rows
+
         assert result.total_rows == 0
         assert result.successful_merges == 0
         assert result.failed_rows == []
-        
-        # Should log the error
         assert mock_logger.error.called
         error_calls = [str(call) for call in mock_logger.error.call_args_list]
         assert any("Error reading file" in str(call) for call in error_calls)

@@ -13,7 +13,7 @@ from typing import List, Optional, TYPE_CHECKING
 
 from .types import ProgressCallback, PROGRESS_LOADING, PROGRESS_PROCESSING
 from .row_pipeline import run_row_pipeline, RowPipelineResult
-from .csv_excel_reader import read_data_file
+from .job_loader import load_job_from_file
 from ..utils.logging_utils import get_logger
 from ..utils.exceptions import PDFMergerError
 from .constants import Constants
@@ -328,8 +328,8 @@ def process_file(
     """
     Process an entire data file and merge PDFs and Excel files for each row.
 
-    Note: This function is kept for backward compatibility.
-    New code should use process_job() with MergeJob domain model.
+    **Deprecated.** Use :func:`process_job` with a :class:`MergeJob` (e.g. from
+    :func:`load_job_from_file`) for new code. Will be removed in version 2.0. See DEPRECATION.md.
 
     Args:
         file_path: Path to the CSV or Excel file
@@ -341,31 +341,20 @@ def process_file(
     Returns:
         ProcessingResult with statistics about the processing
     """
-    if on_progress:
-        on_progress(PROGRESS_LOADING, 0, 0, "Reading input file...")
+    import warnings
 
-    # Use domain models internally but return legacy result
-    job = MergeJob.create(
+    warnings.warn(
+        "process_file is deprecated; use load_job_from_file and process_job instead. Will be removed in 2.0.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    job = load_job_from_file(
         input_file=file_path,
         source_folder=source_folder,
         output_folder=output_folder,
         required_column=required_column,
+        on_progress=on_progress,
     )
-
-    # Load rows from file
-    try:
-        for row_index, row_data in enumerate(read_data_file(file_path), start=0):
-            row = Row.from_raw_data(row_index, row_data, required_column)
-            job.add_row(row)
-    except Exception as e:
-        logger.error(f"Error reading file: {e}")
-        return ProcessingResult(total_rows=0, successful_merges=0, failed_rows=[])
-
-    total_rows = job.get_total_rows()
-    if on_progress:
-        on_progress(PROGRESS_LOADING, total_rows, total_rows, f"Loaded {total_rows} rows")
-
-    # Process job
     merge_result = process_job(job, on_progress=on_progress)
     # Legacy API: callers expect ProcessingResult
     return ProcessingResult(

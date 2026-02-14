@@ -175,12 +175,13 @@ files_unifeder/
 │   │   └── config_schema.py     # Schema and validation
 │   │
 │   ├── core/                    # Business logic and orchestration (see Core package boundaries below)
-│   │   ├── merge_orchestrator.py  # UI-facing API, job construction, row loading (orchestrator)
+│   │   ├── merge_orchestrator.py  # UI-facing API, job construction (orchestrator)
 │   │   ├── merge_processor.py    # Job execution and row-level logic (processor)
-│   │   ├── row_pipeline.py      # One-row pipeline: find, convert Excel, merge, cleanup
-│   │   ├── constants.py         # Shared constants (composed from domain constant modules)
-│   │   ├── csv_excel_reader.py  # CSV/Excel file reading
-│   │   ├── serial_number_parser.py  # Serial number parsing
+│   │   ├── job_loader.py         # load_job_from_file: single place for file → MergeJob with rows
+│   │   ├── row_pipeline.py       # One-row pipeline: find, convert Excel, merge, cleanup
+│   │   ├── constants.py          # Shared constants (composed from domain constant modules)
+│   │   ├── csv_excel_reader.py   # CSV/Excel file reading
+│   │   ├── serial_number_parser.py  # Re-export from utils (backward compatibility)
 │   │   ├── result_reporter.py   # Result formatting
 │   │   ├── result_view.py       # Unified result view for formatters
 │   │   ├── result_types.py     # Legacy ProcessingResult and adapter
@@ -663,9 +664,10 @@ This section provides comprehensive mermaid diagrams explaining the code structu
 
 **External code and integrations must use only the following.** All other modules are internal and may change without notice.
 
-- **Entry points**: `run_merge`, `run_merge_job` — run merge operations (prefer `run_merge_job` with domain models).
+- **Entry points (primary)**: `run_merge_job` — run merge operations; returns `MergeResult`. Use `load_job_from_file` (from `pdf_merger.core.job_loader`) plus `process_job` when you need to build the job yourself.
+- **Entry points (legacy, deprecated)**: `run_merge`, `process_file` — deprecated; use `run_merge_job` and `load_job_from_file`/`process_job` instead. Will be removed in 2.0. See `docs/DEPRECATION.md`.
 - **Configuration**: `load_config`, `AppConfig` — load and represent application configuration.
-- **Result types**: `MergeResult`, `ProcessingResult` — result types from merge runs (`MergeResult` preferred).
+- **Result types**: `MergeResult` (preferred); `ProcessingResult` (legacy, deprecated). Use `as_processing_result(merge_result)` when calling code that expects `ProcessingResult`.
 - **Errors**: `PDFMergerError` — base exception for error handling.
 - **Package metadata**: `APP_VERSION`, `APP_NAME` — version and display name.
 

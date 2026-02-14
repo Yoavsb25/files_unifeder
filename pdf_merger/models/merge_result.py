@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .enums import RowStatus
-from ..core.constants import Constants
+from .defaults import PERCENTAGE_MULTIPLIER
 from ..utils.logging_utils import get_logger
 
 logger = get_logger("pdf_merger.models.merge_result")
@@ -174,7 +174,7 @@ class MergeResult:
         """
         if self.total_rows == 0:
             return 0.0
-        return (self.successful_merges / self.total_rows) * Constants.PERCENTAGE_MULTIPLIER
+        return (self.successful_merges / self.total_rows) * PERCENTAGE_MULTIPLIER
     
     def get_failed_row_results(self) -> List[RowResult]:
         """Get all failed row results."""

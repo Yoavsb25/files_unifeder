@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import List, Optional
 
 from .row import Row
+from .defaults import DEFAULT_SERIAL_NUMBERS_COLUMN
 from ..utils.logging_utils import get_logger
-from ..core.constants import Constants
 
 logger = get_logger("pdf_merger.models.merge_job")
 
@@ -42,7 +42,7 @@ class MergeJob:
         input_file: Path,
         source_folder: Path,
         output_folder: Path,
-        required_column: str = Constants.DEFAULT_SERIAL_NUMBERS_COLUMN,
+        required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
         job_id: Optional[str] = None,
         metadata: Optional[dict] = None
     ) -> 'MergeJob':

@@ -11,10 +11,10 @@ from typing import List, Optional
 
 from ..utils.logging_utils import get_logger
 from ..utils.validators import validate_serial_number
-from ..core.serial_number_parser import (
+from ..utils.serial_number_parser import (
     split_serial_numbers,
     deduplicate_serial_numbers,
-    normalize_serial_number
+    normalize_serial_number,
 )
 
 logger = get_logger("pdf_merger.models.row")
