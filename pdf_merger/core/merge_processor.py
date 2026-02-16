@@ -3,6 +3,7 @@ Merge processor module.
 Main orchestration logic for processing files and merging PDFs.
 """
 
+import re
 import tempfile
 import time
 from dataclasses import dataclass
@@ -31,6 +32,26 @@ EXCEL_FILE_EXTENSIONS = Constants.EXCEL_FILE_EXTENSIONS
 OUTPUT_FILENAME_PATTERN = Constants.OUTPUT_FILENAME_PATTERN
 DEFAULT_SERIAL_NUMBERS_COLUMN = Constants.GOLDFARB_SERIAL_NUMBER_COLUMN
 BYTES_PER_MB = Constants.BYTES_PER_MB
+
+# Characters allowed in custom output filename (alphanumeric, space, hyphen, underscore)
+_FILENAME_SAFE_PATTERN = re.compile(r"[^\w\s\-]", re.UNICODE)
+
+
+def _get_output_filename(row: Row) -> str:
+    """
+    Return the output PDF filename for a row: custom name from row.output_name if set and
+    non-empty after sanitization, otherwise merged_row_{n}.pdf.
+    """
+    custom = (row.output_name or "").strip()
+    if not custom:
+        return OUTPUT_FILENAME_PATTERN.format(row.row_index + 1)
+    # Sanitize: allow alphanumeric, spaces, hyphens, underscores
+    sanitized = _FILENAME_SAFE_PATTERN.sub("", custom).strip()
+    if not sanitized:
+        return OUTPUT_FILENAME_PATTERN.format(row.row_index + 1)
+    if not sanitized.lower().endswith(".pdf"):
+        sanitized = f"{sanitized}.pdf"
+    return sanitized
 
 
 @dataclass
@@ -274,7 +295,7 @@ def process_row_with_models(
                 error_message="No PDF files available for merging"
             )
 
-        output_filename = OUTPUT_FILENAME_PATTERN.format(row.row_index + 1)
+        output_filename = _get_output_filename(row)
         output_path = output_folder / output_filename
 
         if not quiet:
@@ -448,6 +469,7 @@ def process_file(
     source_folder: Path,
     output_folder: Path,
     required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
+    output_name_column: Optional[str] = None,
     on_progress: Optional[Callable[[str, int, int, str], None]] = None,
 ) -> ProcessingResult:
     """
@@ -461,6 +483,7 @@ def process_file(
         source_folder: Folder containing the PDF and Excel files
         output_folder: Folder where merged PDFs will be saved
         required_column: Name of the column containing serial numbers
+        output_name_column: Optional column name for custom merged output filename per row
         on_progress: Optional callback (step, current, total, message) for progress updates
 
     Returns:
@@ -475,12 +498,16 @@ def process_file(
         source_folder=source_folder,
         output_folder=output_folder,
         required_column=required_column,
+        output_name_column=output_name_column,
     )
 
     # Load rows from file
     try:
         for row_index, row_data in enumerate(read_data_file(file_path), start=0):
-            row = Row.from_raw_data(row_index, row_data, required_column)
+            row = Row.from_raw_data(
+                row_index, row_data, required_column,
+                output_name_column=output_name_column,
+            )
             job.add_row(row)
     except Exception as e:
         logger.error(f"Error reading file: {e}")

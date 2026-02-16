@@ -128,6 +128,7 @@ class MergeHandler:
         pdf_dir: Path,
         output_dir: Path,
         required_column: Optional[str] = None,
+        output_name_column: Optional[str] = None,
     ):
         """Run the merge operation in a separate thread."""
         if self.is_processing:
@@ -146,7 +147,7 @@ class MergeHandler:
         # Run in separate thread
         thread = threading.Thread(
             target=self._merge_worker,
-            args=(input_file, pdf_dir, output_dir, required_column),
+            args=(input_file, pdf_dir, output_dir, required_column, output_name_column),
             daemon=True,
         )
         thread.start()
@@ -157,6 +158,7 @@ class MergeHandler:
         pdf_dir: Path,
         output_dir: Path,
         required_column: Optional[str],
+        output_name_column: Optional[str],
     ):
         """Worker thread for merge operation."""
         try:
@@ -165,6 +167,7 @@ class MergeHandler:
                 pdf_dir=pdf_dir,
                 output_dir=output_dir,
                 required_column=required_column or DEFAULT_SERIAL_NUMBERS_COLUMN,
+                output_name_column=output_name_column,
                 on_progress=self.on_progress,
             )
 

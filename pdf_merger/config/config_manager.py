@@ -38,6 +38,7 @@ class AppConfig:
     pdf_dir: Optional[str] = None
     output_dir: Optional[str] = None
     required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN
+    output_name_column: Optional[str] = None
     # Observability settings
     metrics_enabled: bool = True
     telemetry_enabled: bool = False  # Opt-in by default
@@ -57,6 +58,7 @@ class AppConfig:
             pdf_dir=data.get('pdf_dir'),
             output_dir=data.get('output_dir'),
             required_column=data.get('required_column', DEFAULT_SERIAL_NUMBERS_COLUMN),
+            output_name_column=data.get('output_name_column'),
             metrics_enabled=data.get('metrics_enabled', True),
             telemetry_enabled=data.get('telemetry_enabled', False),
             crash_reporting_enabled=data.get('crash_reporting_enabled', False),
@@ -90,6 +92,7 @@ class AppConfig:
             pdf_dir=other.pdf_dir if other.pdf_dir else self.pdf_dir,
             output_dir=other.output_dir if other.output_dir else self.output_dir,
             required_column=other.required_column if other.required_column != DEFAULT_SERIAL_NUMBERS_COLUMN or self.required_column == DEFAULT_SERIAL_NUMBERS_COLUMN else self.required_column,
+            output_name_column=other.output_name_column if hasattr(other, 'output_name_column') else self.output_name_column,
             metrics_enabled=other.metrics_enabled if hasattr(other, 'metrics_enabled') else self.metrics_enabled,
             telemetry_enabled=other.telemetry_enabled if hasattr(other, 'telemetry_enabled') else self.telemetry_enabled,
             crash_reporting_enabled=other.crash_reporting_enabled if hasattr(other, 'crash_reporting_enabled') else self.crash_reporting_enabled,

@@ -28,19 +28,22 @@ class Row:
         serial_numbers_str: Raw serial numbers string from the specified column
         serial_numbers: Parsed and validated serial numbers list
         required_column: Name of the column containing serial numbers
+        output_name: Optional custom name for merged output file (from output_name_column)
     """
     row_index: int
     raw_data: dict
     serial_numbers_str: str
     serial_numbers: List[str]
     required_column: str
+    output_name: Optional[str] = None
     
     @classmethod
     def from_raw_data(
         cls,
         row_index: int,
         raw_data: dict,
-        required_column: str
+        required_column: str,
+        output_name_column: Optional[str] = None,
     ) -> 'Row':
         """
         Create a Row from raw data dictionary.
@@ -49,6 +52,7 @@ class Row:
             row_index: Zero-based row index
             raw_data: Raw row data dictionary
             required_column: Name of the column containing serial numbers
+            output_name_column: Optional column name for custom merged output filename
             
         Returns:
             Row instance with parsed and validated serial numbers
@@ -72,12 +76,18 @@ class Row:
             for s in unique_serial_numbers
         ]
         
+        output_name = None
+        if output_name_column and output_name_column.strip():
+            raw_output_name = raw_data.get(output_name_column, '').strip()
+            output_name = raw_output_name or None
+        
         return cls(
             row_index=row_index,
             raw_data=raw_data,
             serial_numbers_str=serial_numbers_str,
             serial_numbers=normalized_serial_numbers,
-            required_column=required_column
+            required_column=required_column,
+            output_name=output_name,
         )
     
     def has_serial_numbers(self) -> bool:

@@ -75,6 +75,7 @@ def run_merge_job(
     required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
     job_id: Optional[str] = None,
     fail_on_ambiguous: bool = True,
+    output_name_column: Optional[str] = None,
     on_progress: Optional[Callable[[str, int, int, str], None]] = None,
 ) -> MergeResult:
     """
@@ -86,6 +87,7 @@ def run_merge_job(
         output_dir: Path to output folder
         required_column: Name of the column containing serial numbers
         job_id: Optional job identifier for tracking
+        output_name_column: Optional column name for custom merged output filename per row
         
     Returns:
         MergeResult with detailed processing results
@@ -101,7 +103,8 @@ def run_merge_job(
         source_folder=pdf_dir,
         output_folder=output_dir,
         required_column=required_column,
-        job_id=job_id
+        job_id=job_id,
+        output_name_column=output_name_column,
     )
     
     # Load rows from file
@@ -109,7 +112,10 @@ def run_merge_job(
         on_progress("loading", 0, 0, "Reading input file...")
     try:
         for row_index, row_data in enumerate(read_data_file(input_file), start=0):
-            row = Row.from_raw_data(row_index, row_data, required_column)
+            row = Row.from_raw_data(
+                row_index, row_data, required_column,
+                output_name_column=output_name_column,
+            )
             job.add_row(row)
     except Exception as e:
         logger.error(f"Error reading file: {e}")

@@ -147,15 +147,18 @@ class PDFMergerApp(ctk.CTk):
         self.license_frame = LicenseFrame(main_frame)
         self.license_frame.pack(fill="x", pady=(0, SECTION_SPACING))
 
-        # Serial numbers column row (packed inside Instructions File card via extra_row)
+        # Serial numbers column and optional output name column (packed inside Instructions File card via extra_row)
         column_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        # Row 1: Serial numbers column
+        serial_row = ctk.CTkFrame(column_frame, fg_color="transparent")
+        serial_row.pack(fill="x", pady=(0, 8))
         ctk.CTkLabel(
-            column_frame,
+            serial_row,
             text="Serial numbers column:",
             font=ctk.CTkFont(size=FONT_LABEL_SIZE, weight="bold"),
         ).pack(anchor="w", side="left", padx=(0, 8))
         self.column_entry = ctk.CTkEntry(
-            column_frame,
+            serial_row,
             placeholder_text="e.g. serial_numbers or Document ID",
             font=ctk.CTkFont(family="Courier New", size=FONT_MONO_SIZE),
             width=220,
@@ -167,6 +170,27 @@ class PDFMergerApp(ctk.CTk):
         self.column_entry.pack(side="left")
         self.column_entry.bind("<FocusIn>", lambda e: self.column_entry.configure(border_color=PRIMARY_BLUE))
         self.column_entry.bind("<FocusOut>", lambda e: self.column_entry.configure(border_color=CARD_BORDER))
+        # Row 2: Output name column (optional)
+        output_name_row = ctk.CTkFrame(column_frame, fg_color="transparent")
+        output_name_row.pack(fill="x")
+        ctk.CTkLabel(
+            output_name_row,
+            text="Output name column (optional):",
+            font=ctk.CTkFont(size=FONT_LABEL_SIZE, weight="bold"),
+        ).pack(anchor="w", side="left", padx=(0, 8))
+        self.output_name_column_entry = ctk.CTkEntry(
+            output_name_row,
+            placeholder_text="e.g. output_name or leave blank",
+            font=ctk.CTkFont(family="Courier New", size=FONT_MONO_SIZE),
+            width=220,
+            height=40,
+            fg_color=INPUT_BACKGROUND,
+            border_width=1,
+            border_color=CARD_BORDER,
+        )
+        self.output_name_column_entry.pack(side="left")
+        self.output_name_column_entry.bind("<FocusIn>", lambda e: self.output_name_column_entry.configure(border_color=PRIMARY_BLUE))
+        self.output_name_column_entry.bind("<FocusOut>", lambda e: self.output_name_column_entry.configure(border_color=CARD_BORDER))
 
         # Setup Section - three step-based cards (Instructions File includes serial column row)
         self.input_file_selector = SetupCard(
@@ -247,8 +271,10 @@ class PDFMergerApp(ctk.CTk):
     
     def _load_config_into_ui(self):
         """Load configuration values into UI fields if available."""
-        # Load column name
+        # Load column names
         self.column_entry.insert(0, self.config.required_column)
+        if getattr(self.config, "output_name_column", None):
+            self.output_name_column_entry.insert(0, self.config.output_name_column)
 
         if self.config.input_file:
             try:
@@ -314,6 +340,11 @@ class PDFMergerApp(ctk.CTk):
         value = self.column_entry.get().strip()
         return value or self.config.required_column or Constants.DEFAULT_SERIAL_NUMBERS_COLUMN
 
+    def _get_output_name_column(self) -> Optional[str]:
+        """Get output name column from entry, or None if empty."""
+        value = self.output_name_column_entry.get().strip()
+        return value or None
+
     def _on_validation_error(self, field: str, message: str):
         """Handle validation error - show inline on the affected selector."""
         selector_map = {
@@ -335,7 +366,11 @@ class PDFMergerApp(ctk.CTk):
             self.input_file_path = path
             self.input_file_selector.set_path(str(path))
             self.input_file_selector.clear_error()
-            self.config = self.config.merge(type(self.config)(input_file=str(path)))
+            self.config = self.config.merge(type(self.config)(
+                input_file=str(path),
+                required_column=self._get_column(),
+                output_name_column=self._get_output_name_column(),
+            ))
             save_config(self.config)
             self._log_info(f"Selected input file: {path.name}")
             self._update_ui_state()
@@ -351,7 +386,11 @@ class PDFMergerApp(ctk.CTk):
             self.pdf_dir_path = path
             self.pdf_dir_selector.set_path(str(path))
             self.pdf_dir_selector.clear_error()
-            self.config = self.config.merge(type(self.config)(pdf_dir=str(path)))
+            self.config = self.config.merge(type(self.config)(
+                pdf_dir=str(path),
+                required_column=self._get_column(),
+                output_name_column=self._get_output_name_column(),
+            ))
             save_config(self.config)
             self._log_info(f"Selected source directory: {path}")
             self._update_ui_state()
@@ -385,7 +424,11 @@ class PDFMergerApp(ctk.CTk):
             self.output_dir_path = path
             self.output_dir_selector.set_path(str(path))
             self.output_dir_selector.clear_error()
-            self.config = self.config.merge(type(self.config)(output_dir=str(path)))
+            self.config = self.config.merge(type(self.config)(
+                output_dir=str(path),
+                required_column=self._get_column(),
+                output_name_column=self._get_output_name_column(),
+            ))
             save_config(self.config)
             self._log_info(f"Selected output directory: {path}")
             self._update_ui_state()
@@ -463,6 +506,7 @@ class PDFMergerApp(ctk.CTk):
             pdf_dir=self.pdf_dir_path,
             output_dir=self.output_dir_path,
             required_column=self._get_column(),
+            output_name_column=self._get_output_name_column(),
         )
     
     def _on_merge_start(self):

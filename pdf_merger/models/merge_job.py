@@ -38,6 +38,7 @@ class MergeJob:
     rows: List[Row]
     job_id: Optional[str] = None
     metadata: Optional[dict] = None
+    output_name_column: Optional[str] = None
     
     @classmethod
     def create(
@@ -47,7 +48,8 @@ class MergeJob:
         output_folder: Path,
         required_column: str = DEFAULT_SERIAL_NUMBERS_COLUMN,
         job_id: Optional[str] = None,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
+        output_name_column: Optional[str] = None,
     ) -> 'MergeJob':
         """
         Create a MergeJob instance.
@@ -59,6 +61,7 @@ class MergeJob:
             required_column: Name of the column containing serial numbers
             job_id: Optional job identifier
             metadata: Optional metadata dictionary
+            output_name_column: Optional column name for custom merged output filename per row
             
         Returns:
             MergeJob instance
@@ -70,7 +73,8 @@ class MergeJob:
             required_column=required_column,
             rows=[],
             job_id=job_id,
-            metadata=metadata or {}
+            metadata=metadata or {},
+            output_name_column=output_name_column,
         )
     
     def add_row(self, row: Row) -> None:
