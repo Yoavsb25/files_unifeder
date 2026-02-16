@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
 from ..operations.pdf_merger import find_source_file, merge_pdfs
-from ..operations.excel_to_pdf_converter import convert_excel_to_pdf
 from .csv_excel_reader import read_data_file
 from ..utils.logging_utils import get_logger
 from ..utils.exceptions import PDFMergerError
@@ -71,25 +70,9 @@ def _convert_excel_files_to_pdfs(
 
     for source_path in source_files:
         if source_path.suffix.lower() in EXCEL_FILE_EXTENSIONS:
-            # Convert Excel to PDF
+            # Skip Excel files; do not convert to PDF (conversion results are not satisfactory)
             if not quiet:
-                logger.info(f"  Converting {source_path.name} to PDF...")
-            temp_pdf = tempfile.NamedTemporaryFile(
-                suffix='.pdf',
-                delete=False,
-                dir=output_folder.parent if output_folder.parent.exists() else None
-            )
-            temp_pdf.close()
-            temp_pdf_path = Path(temp_pdf.name)
-            temp_pdf_files.append(temp_pdf_path)
-            
-            if convert_excel_to_pdf(source_path, temp_pdf_path):
-                pdf_paths.append(temp_pdf_path)
-                if not quiet:
-                    logger.info(f"  ✓ Converted {source_path.name} to PDF")
-            else:
-                if not quiet:
-                    logger.error(f"  ✗ Failed to convert {source_path.name} to PDF")
+                logger.info(f"  Skipped {source_path.name}: Excel file (Excel to PDF conversion is disabled)")
         else:
             # Already a PDF file
             pdf_paths.append(source_path)
