@@ -70,9 +70,12 @@ def _convert_excel_files_to_pdfs(
 
     for source_path in source_files:
         if source_path.suffix.lower() in EXCEL_FILE_EXTENSIONS:
-            # Skip Excel files; do not convert to PDF (conversion results are not satisfactory)
+            # Skip Excel files; only PDFs are merged
             if not quiet:
-                logger.info(f"  Skipped {source_path.name}: Excel file (Excel to PDF conversion is disabled)")
+                logger.warning(
+                    "  Skipping: %s — this is an Excel file; only PDF files are merged.",
+                    source_path.name,
+                )
         else:
             # Already a PDF file
             pdf_paths.append(source_path)
@@ -403,7 +406,17 @@ def process_job(
                     on_progress("processing", row_num, total_rows, detail)
                 elif row_result.is_skipped() and not row_result.files_found:
                     on_progress("processing", row_num, total_rows, "  • No valid files to merge")
-        
+                # Per-file message for each skipped Excel file so the user sees it in the Detailed Log
+                if excel_count > 0:
+                    for p in row_result.files_found:
+                        if p.suffix.lower() in EXCEL_FILE_EXTENSIONS:
+                            on_progress(
+                                "processing",
+                                row_num,
+                                total_rows,
+                                f"  • Skipping: {p.name} — this is an Excel file; only PDF files are merged.",
+                            )
+
         result.total_processing_time = time.time() - start_time
         metrics.record_timer("job_processing_time", result.total_processing_time)
         metrics.record_counter("jobs_completed")
