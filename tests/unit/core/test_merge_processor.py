@@ -152,16 +152,15 @@ class TestProcessRowWithModelsLegacyScenarios:
 
 
 class TestProcessRowWithExcel:
-    """Test cases for process_row_with_models with Excel file support."""
+    """Test cases for process_row_with_models when Excel files are skipped."""
 
     @patch("pdf_merger.core.row_pipeline.merge_pdfs")
-    @patch("pdf_merger.core.row_pipeline._convert_excel_files_to_pdfs")
     @patch("pdf_merger.core.row_pipeline.find_source_file")
     @patch("pdf_merger.core.merge_processor.get_metrics_collector")
-    def test_process_row_with_excel_file(
-        self, mock_metrics, mock_find, mock_convert, mock_merge, tmp_path
+    def test_process_row_with_excel_file_is_skipped(
+        self, mock_metrics, mock_find, mock_merge, tmp_path
     ):
-        """Test processing row with Excel file that gets converted to PDF."""
+        """Test processing row with only Excel files: row fails because there are no PDFs to merge."""
         source_folder = tmp_path / "source"
         output_folder = tmp_path / "output"
         source_folder.mkdir()
@@ -169,29 +168,24 @@ class TestProcessRowWithExcel:
 
         excel_file = source_folder / "GRNW_000103851.xlsx"
         excel_file.write_bytes(b"fake excel")
-        temp_pdf = tmp_path / "temp_grnw_000103851.pdf"
-        temp_pdf.write_bytes(b"fake pdf")
 
         row = Row.from_raw_data(0, {"serial_numbers": "GRNW_000103851"}, "serial_numbers")
         mock_find.return_value = excel_file
-        mock_convert.return_value = ([temp_pdf], [temp_pdf])
-        mock_merge.return_value = True
         mock_metrics.return_value = MagicMock()
 
         result = process_row_with_models(row, source_folder, output_folder, fail_on_ambiguous=False)
 
-        assert result.is_success()
-        mock_convert.assert_called_once()
-        mock_merge.assert_called_once()
+        assert result.is_failed()
+        assert "No PDF files available" in (result.error_message or "")
+        mock_merge.assert_not_called()
 
     @patch("pdf_merger.core.row_pipeline.merge_pdfs")
-    @patch("pdf_merger.core.row_pipeline._convert_excel_files_to_pdfs")
     @patch("pdf_merger.core.row_pipeline.find_source_file")
     @patch("pdf_merger.core.merge_processor.get_metrics_collector")
     def test_process_row_mixed_pdf_and_excel(
-        self, mock_metrics, mock_find, mock_convert, mock_merge, tmp_path
+        self, mock_metrics, mock_find, mock_merge, tmp_path
     ):
-        """Test processing row with both PDF and Excel files."""
+        """Test processing row with both PDF and Excel files merges only PDFs."""
         source_folder = tmp_path / "source"
         output_folder = tmp_path / "output"
         source_folder.mkdir()
@@ -201,30 +195,27 @@ class TestProcessRowWithExcel:
         pdf_file.write_bytes(b"fake pdf")
         excel_file = source_folder / "GRNW_000103852.xlsx"
         excel_file.write_bytes(b"fake excel")
-        temp_pdf = tmp_path / "temp_grnw_000103852.pdf"
-        temp_pdf.write_bytes(b"fake pdf")
-
         row = Row.from_raw_data(
             0, {"serial_numbers": "GRNW_000103851,GRNW_000103852"}, "serial_numbers"
         )
         mock_find.side_effect = [pdf_file, excel_file]
-        mock_convert.return_value = ([pdf_file, temp_pdf], [temp_pdf])
         mock_merge.return_value = True
         mock_metrics.return_value = MagicMock()
 
         result = process_row_with_models(row, source_folder, output_folder, fail_on_ambiguous=False)
 
         assert result.is_success()
-        assert mock_convert.call_count == 1
         mock_merge.assert_called_once()
+        merge_pdf_paths = mock_merge.call_args[0][0]
+        assert merge_pdf_paths == [pdf_file]
 
-    @patch("pdf_merger.core.row_pipeline._convert_excel_files_to_pdfs")
+    @patch("pdf_merger.core.row_pipeline.logger")
     @patch("pdf_merger.core.row_pipeline.find_source_file")
     @patch("pdf_merger.core.merge_processor.get_metrics_collector")
-    def test_process_row_excel_conversion_fails(
-        self, mock_metrics, mock_find, mock_convert, tmp_path
+    def test_process_row_logs_skipped_excel_files(
+        self, mock_metrics, mock_find, mock_logger, tmp_path
     ):
-        """Test processing row when Excel conversion fails."""
+        """Test processing row logs that Excel files were skipped."""
         source_folder = tmp_path / "source"
         output_folder = tmp_path / "output"
         source_folder.mkdir()
@@ -235,40 +226,43 @@ class TestProcessRowWithExcel:
 
         row = Row.from_raw_data(0, {"serial_numbers": "GRNW_000103851"}, "serial_numbers")
         mock_find.return_value = excel_file
-        mock_convert.return_value = ([], [])  # No PDFs produced - conversion failed
         mock_metrics.return_value = MagicMock()
 
         result = process_row_with_models(row, source_folder, output_folder, fail_on_ambiguous=False)
 
         assert result.is_failed()
+        mock_logger.warning.assert_any_call(
+            "  Skipping Excel file (only PDF files are merged): GRNW_000103851.xlsx"
+        )
 
     @patch("pdf_merger.core.row_pipeline.merge_pdfs")
-    @patch("pdf_merger.core.row_pipeline._convert_excel_files_to_pdfs")
     @patch("pdf_merger.core.row_pipeline.find_source_file")
     @patch("pdf_merger.core.merge_processor.get_metrics_collector")
-    def test_process_row_cleans_up_temp_files(
-        self, mock_metrics, mock_find, mock_convert, mock_merge, tmp_path
+    def test_process_row_with_pdf_still_succeeds_when_excel_present(
+        self, mock_metrics, mock_find, mock_merge, tmp_path
     ):
-        """Test that temporary PDF files are cleaned up after merging."""
+        """Test processing row succeeds when at least one PDF exists even if Excel is skipped."""
         source_folder = tmp_path / "source"
         output_folder = tmp_path / "output"
         source_folder.mkdir()
         output_folder.mkdir()
 
+        pdf_file = source_folder / "GRNW_000103850.pdf"
+        pdf_file.write_bytes(b"fake pdf")
         excel_file = source_folder / "GRNW_000103851.xlsx"
         excel_file.write_bytes(b"fake excel")
-        temp_pdf = tmp_path / "temp_grnw_000103851.pdf"
-        temp_pdf.write_bytes(b"fake pdf")
 
-        row = Row.from_raw_data(0, {"serial_numbers": "GRNW_000103851"}, "serial_numbers")
-        mock_find.return_value = excel_file
-        mock_convert.return_value = ([temp_pdf], [temp_pdf])
+        row = Row.from_raw_data(
+            0, {"serial_numbers": "GRNW_000103850,GRNW_000103851"}, "serial_numbers"
+        )
+        mock_find.side_effect = [pdf_file, excel_file]
         mock_merge.return_value = True
         mock_metrics.return_value = MagicMock()
 
         result = process_row_with_models(row, source_folder, output_folder, fail_on_ambiguous=False)
 
         assert result.is_success()
+        mock_merge.assert_called_once()
 
 
 class TestProcessRowWithModels:
@@ -845,36 +839,22 @@ class TestProcessJob:
 class TestConvertExcelFilesToPdfs:
     """Test cases for _convert_excel_files_to_pdfs function."""
 
-    @patch("pdf_merger.core.row_pipeline.convert_excel_to_pdf")
-    @patch("pdf_merger.core.row_pipeline.tempfile.NamedTemporaryFile")
-    def test_convert_excel_files_to_pdfs_success(self, mock_tempfile, mock_convert, tmp_path):
-        """Test converting Excel files to PDFs successfully."""
+    def test_convert_excel_files_to_pdfs_skips_excel(self, tmp_path):
+        """Test Excel files are skipped and no temp files are created."""
         from pdf_merger.core.row_pipeline import _convert_excel_files_to_pdfs
 
         excel_file = tmp_path / "test.xlsx"
         excel_file.write_bytes(b"fake excel")
-        pdf_file = tmp_path / "test.pdf"
-        pdf_file.write_bytes(b"fake pdf")
 
         output_folder = tmp_path / "output"
         output_folder.mkdir()
 
-        # Mock tempfile
-        mock_temp = MagicMock()
-        mock_temp.name = str(tmp_path / "temp.pdf")
-        mock_temp.close = MagicMock()
-        mock_tempfile.return_value = mock_temp
-
-        mock_convert.return_value = True
-
         pdf_paths, temp_files = _convert_excel_files_to_pdfs([excel_file], output_folder)
 
-        assert len(pdf_paths) == 1
-        assert len(temp_files) == 1
-        mock_convert.assert_called_once()
+        assert len(pdf_paths) == 0
+        assert len(temp_files) == 0
 
-    @patch("pdf_merger.core.row_pipeline.convert_excel_to_pdf")
-    def test_convert_excel_files_to_pdfs_pdf_files(self, mock_convert, tmp_path):
+    def test_convert_excel_files_to_pdfs_pdf_files(self, tmp_path):
         """Test with PDF files (should not convert)."""
         from pdf_merger.core.row_pipeline import _convert_excel_files_to_pdfs
 
@@ -889,38 +869,9 @@ class TestConvertExcelFilesToPdfs:
         assert len(pdf_paths) == 1
         assert pdf_paths[0] == pdf_file
         assert len(temp_files) == 0
-        mock_convert.assert_not_called()
 
-    @patch("pdf_merger.core.row_pipeline.convert_excel_to_pdf")
-    @patch("pdf_merger.core.row_pipeline.tempfile.NamedTemporaryFile")
-    def test_convert_excel_files_to_pdfs_conversion_fails(
-        self, mock_tempfile, mock_convert, tmp_path
-    ):
-        """Test when Excel conversion fails."""
-        from pdf_merger.core.row_pipeline import _convert_excel_files_to_pdfs
-
-        excel_file = tmp_path / "test.xlsx"
-        excel_file.write_bytes(b"fake excel")
-
-        output_folder = tmp_path / "output"
-        output_folder.mkdir()
-
-        mock_temp = MagicMock()
-        mock_temp.name = str(tmp_path / "temp.pdf")
-        mock_temp.close = MagicMock()
-        mock_tempfile.return_value = mock_temp
-
-        mock_convert.return_value = False
-
-        pdf_paths, temp_files = _convert_excel_files_to_pdfs([excel_file], output_folder)
-
-        assert len(pdf_paths) == 0
-        assert len(temp_files) == 1  # Temp file still created
-
-    @patch("pdf_merger.core.row_pipeline.convert_excel_to_pdf")
-    @patch("pdf_merger.core.row_pipeline.tempfile.NamedTemporaryFile")
-    def test_convert_excel_files_to_pdfs_mixed_files(self, mock_tempfile, mock_convert, tmp_path):
-        """Test with mixed PDF and Excel files."""
+    def test_convert_excel_files_to_pdfs_mixed_files(self, tmp_path):
+        """Test with mixed PDF and Excel files: only PDFs are kept."""
         from pdf_merger.core.row_pipeline import _convert_excel_files_to_pdfs
 
         pdf_file = tmp_path / "test1.pdf"
@@ -931,18 +882,11 @@ class TestConvertExcelFilesToPdfs:
         output_folder = tmp_path / "output"
         output_folder.mkdir()
 
-        mock_temp = MagicMock()
-        mock_temp.name = str(tmp_path / "temp.pdf")
-        mock_temp.close = MagicMock()
-        mock_tempfile.return_value = mock_temp
-
-        mock_convert.return_value = True
-
         pdf_paths, temp_files = _convert_excel_files_to_pdfs([pdf_file, excel_file], output_folder)
 
-        assert len(pdf_paths) == 2  # PDF + converted Excel
-        assert len(temp_files) == 1  # Only Excel creates temp file
-        mock_convert.assert_called_once()
+        assert len(pdf_paths) == 1
+        assert pdf_paths[0] == pdf_file
+        assert len(temp_files) == 0
 
 
 class TestCleanupTempFiles:

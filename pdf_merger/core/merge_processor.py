@@ -80,11 +80,11 @@ def process_row_with_models(
     metrics_collector: Optional["MetricsRecorder"] = None,
 ) -> RowResult:
     """
-    Process a single row using domain models: find PDFs and Excel files, convert Excel to PDF, and merge them.
+    Process a single row using domain models: find source files, merge only PDFs, and skip Excel files.
 
     Args:
         row: Row instance to process
-        source_folder: Folder containing the PDF and Excel files
+        source_folder: Folder containing source files
         output_folder: Folder where merged PDFs will be saved
         fail_on_ambiguous: If True, raises ValueError on ambiguous matches (default: True)
         quiet: If True, suppress row-level logger output (use when progress callback handles logging order)
@@ -112,7 +112,7 @@ def process_row_with_models(
             f"Row {row.row_index + 1}: Processing serial numbers: {', '.join(row.serial_numbers)}"
         )
 
-    # 2. Run pipeline (find, convert Excel, merge, cleanup)
+    # 2. Run pipeline (find, keep PDFs, merge, cleanup)
     try:
         pipeline = run_row_pipeline(
             row.row_index,
@@ -167,6 +167,18 @@ def _progress_message_for_row_result(
     else:
         msg = f"Row {row_num} → Found {pdf_count} PDFs, {excel_count} Excel → Failed"
     lines = [msg]
+    if excel_count:
+        skipped_excel_names = [
+            p.name for p in row_result.files_found if p.suffix.lower() in EXCEL_FILE_EXTENSIONS
+        ]
+        if len(skipped_excel_names) <= MAX_MISSING_TO_LIST:
+            lines.append(
+                f"  • This is an Excel file; skipping (only PDFs are processed): {', '.join(skipped_excel_names)}"
+            )
+        else:
+            lines.append(
+                f"  • This is an Excel file; skipping (only PDFs are processed): {len(skipped_excel_names)} file(s)"
+            )
     missing = row_result.files_missing or []
     if missing:
         detail = (

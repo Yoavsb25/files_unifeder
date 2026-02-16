@@ -1,9 +1,8 @@
 """
-Row pipeline: find source files, convert Excel to PDF, merge, cleanup.
+Row pipeline: find source files, keep only PDFs for merge, cleanup.
 Single responsibility for one-row processing; merge_processor orchestrates rows and maps to RowResult.
 """
 
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple
@@ -15,8 +14,6 @@ from .constants import Constants
 
 if TYPE_CHECKING:
     from ..operations.pdf_merger import PDFMergeBackend
-
-from ..operations.excel_to_pdf_converter import convert_excel_to_pdf
 
 logger = get_logger("pdf_merger.core.row_pipeline")
 
@@ -39,32 +36,28 @@ class RowPipelineResult:
 def _convert_excel_files_to_pdfs(
     source_files: List[Path], output_folder: Path, quiet: bool = False
 ) -> Tuple[List[Path], List[Path]]:
-    """Convert Excel files to PDFs; return (pdf_paths, temp_pdf_files) for cleanup."""
+    """
+    Keep only PDF files for merge and skip Excel files.
+
+    Returns a tuple of (pdf_paths, temp_pdf_files) to preserve the existing
+    call contract; temp_pdf_files is always empty because no conversion occurs.
+    """
     pdf_paths = []
-    temp_pdf_files = []
+    temp_pdf_files: List[Path] = []
 
     for source_path in source_files:
-        if source_path.suffix.lower() in EXCEL_FILE_EXTENSIONS:
+        suffix = source_path.suffix.lower()
+        if suffix in EXCEL_FILE_EXTENSIONS:
             if not quiet:
-                logger.info(f"  Converting {source_path.name} to PDF...")
-            temp_pdf = tempfile.NamedTemporaryFile(
-                suffix=".pdf",
-                delete=False,
-                dir=output_folder.parent if output_folder.parent.exists() else None,
-            )
-            temp_pdf.close()
-            temp_pdf_path = Path(temp_pdf.name)
-            temp_pdf_files.append(temp_pdf_path)
-
-            if convert_excel_to_pdf(source_path, temp_pdf_path):
-                pdf_paths.append(temp_pdf_path)
-                if not quiet:
-                    logger.info(f"  ✓ Converted {source_path.name} to PDF")
-            else:
-                if not quiet:
-                    logger.error(f"  ✗ Failed to convert {source_path.name} to PDF")
-        else:
+                logger.warning(
+                    f"  Skipping Excel file (only PDF files are merged): {source_path.name}"
+                )
+            continue
+        if suffix == Constants.PDF_FILE_EXTENSION:
             pdf_paths.append(source_path)
+            continue
+        if not quiet:
+            logger.warning(f"  Skipping non-PDF file: {source_path.name}")
 
     return pdf_paths, temp_pdf_files
 
@@ -92,7 +85,7 @@ def run_row_pipeline(
     pdf_merge_backend: Optional["PDFMergeBackend"] = None,
 ) -> RowPipelineResult:
     """
-    Find source files, convert Excel to PDF, merge, cleanup for one row.
+    Find source files, keep PDFs, merge, cleanup for one row.
     Caller is responsible for parsing/validation and mapping to RowResult via process_row_with_models.
     May raise ValueError on ambiguous match when fail_on_ambiguous is True.
     When pdf_merge_backend is provided, it is used instead of the default merge_pdfs (e.g. for tests or alternate backends).

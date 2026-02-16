@@ -39,8 +39,8 @@ class PathController:
         log_message: str,
     ) -> None:
         """Set path on app, update selector, merge config, save, log, and refresh UI."""
-        base_config = self._get_config()
-        config = base_config.merge(type(base_config)(**config_override))
+        current = self._get_config()
+        config = current.merge(type(current)(**config_override))
         self._set_config(path_attr, path, config)
         selector.set_path(str(path))
         selector.clear_error()

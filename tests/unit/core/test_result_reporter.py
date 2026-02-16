@@ -24,8 +24,8 @@ class TestFormatResultSummary:
         assert "=" * 60 in summary
 
     def test_format_result_summary_with_failures(self):
-        """Test formatting summary with failed rows."""
-        result = MergeResult(total_rows=10, successful_merges=7, failed_rows=[2, 5, 8])
+        """Test formatting summary with failed rows (failed_rows are 0-based indices)."""
+        result = MergeResult(total_rows=10, successful_merges=7, failed_rows=[1, 4, 7])
 
         summary = format_result_summary(result)
 
@@ -39,7 +39,7 @@ class TestFormatResultSummary:
         result = MergeResult(
             total_rows=100,
             successful_merges=50,
-            failed_rows=list(range(1, 51)),  # 50 failed rows
+            failed_rows=list(range(0, 50)),  # 50 failed rows (0-based indices)
         )
 
         summary = format_result_summary(result)
@@ -61,9 +61,9 @@ class TestFormatResultSummary:
         assert "Failed rows: 0" in summary
 
     def test_format_result_summary_with_mergeresult_skipped(self):
-        """Test formatting summary with MergeResult containing skipped rows."""
+        """Test formatting summary with MergeResult containing skipped rows (0-based indices)."""
         result = MergeResult(
-            total_rows=10, successful_merges=7, failed_rows=[2], skipped_rows=[1, 3]
+            total_rows=10, successful_merges=7, failed_rows=[1], skipped_rows=[0, 2]
         )
 
         summary = format_result_summary(result)
@@ -91,8 +91,8 @@ class TestFormatResultDetailed:
         assert "=" * 60 in report
 
     def test_format_result_detailed_with_failures(self):
-        """Test formatting detailed report with failed rows."""
-        result = MergeResult(total_rows=10, successful_merges=7, failed_rows=[2, 5, 8])
+        """Test formatting detailed report with failed rows (0-based indices, display 1-based)."""
+        result = MergeResult(total_rows=10, successful_merges=7, failed_rows=[1, 4, 7])
 
         report = format_result_detailed(result)
 
@@ -117,8 +117,8 @@ class TestFormatResultDetailed:
         assert "Success rate: 0.0%" in report
 
     def test_format_result_detailed_partial_success(self):
-        """Test formatting detailed report with partial success."""
-        result = MergeResult(total_rows=5, successful_merges=3, failed_rows=[1, 4])
+        """Test formatting detailed report with partial success (0-based indices, display 1-based)."""
+        result = MergeResult(total_rows=5, successful_merges=3, failed_rows=[0, 3])
 
         report = format_result_detailed(result)
 

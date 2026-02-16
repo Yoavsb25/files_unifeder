@@ -25,16 +25,17 @@ def format_failed_rows_display(
     max_length: int = Constants.MAX_DISPLAY_STRING_LENGTH,
 ) -> str:
     """
-    Format failed row indices as a truncated string for display (e.g. "2, 5, 8" or "2, 5, 8, ...").
+    Format failed row indices as a truncated string for display (e.g. "1, 2, 5" or "1, 2, 5, ...").
 
     Args:
-        failed_rows: List of failed row indices (0-based or 1-based; displayed as-is).
+        failed_rows: List of failed row indices (0-based; displayed as 1-based for users).
         max_length: Maximum string length before truncation with "...".
 
     Returns:
-        Comma-separated string, truncated if over max_length.
+        Comma-separated string of 1-based row numbers, truncated if over max_length.
     """
-    failed_str = ", ".join(map(str, failed_rows))
+    # Display 1-based row numbers to match "Processing Row 1...", "Row 1 → Failed", etc.
+    failed_str = ", ".join(str(i + 1) for i in failed_rows)
     if len(failed_str) > max_length:
         failed_str = failed_str[: max_length - 3] + "..."
     return failed_str
@@ -92,13 +93,13 @@ def format_result_detailed(result: MergeResult) -> str:
     lines.append("")
     if view.failed_rows:
         lines.append("Failed Row Numbers:" if view.row_results else "Failed/Skipped Row Numbers:")
-        for row_num in view.failed_rows:
-            lines.append(f"  - Row {row_num}")
+        for row_index in view.failed_rows:
+            lines.append(f"  - Row {row_index + 1}")
         lines.append("")
     if view.skipped_rows:
         lines.append("Skipped Row Numbers:")
-        for row_num in view.skipped_rows:
-            lines.append(f"  - Row {row_num}")
+        for row_index in view.skipped_rows:
+            lines.append(f"  - Row {row_index + 1}")
         lines.append("")
     if view.row_results:
         lines.append("Row Details:")

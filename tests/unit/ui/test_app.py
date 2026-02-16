@@ -571,7 +571,7 @@ class TestPDFMergerApp:
         result = MergeResult(
             total_rows=10,
             successful_merges=6,
-            failed_rows=[2, 5],
+            failed_rows=[1, 4],  # 0-based: rows 2 and 5 failed
             skipped_rows=[0, 9],
         )
 
@@ -583,7 +583,7 @@ class TestPDFMergerApp:
         app._log_info.assert_any_call("PDFs created: 6")
         app._log_warning.assert_called_once_with("Skipped: 2")
         app._log_error.assert_any_call("Failed: 2")
-        app._log_error.assert_any_call(f"Failed row numbers: {format_failed_rows_display([2, 5])}")
+        app._log_error.assert_any_call(f"Failed row numbers: {format_failed_rows_display(result.failed_rows)}")
 
         app.results_frame.update_results.assert_called_once_with(
             rows_analyzed=10,
