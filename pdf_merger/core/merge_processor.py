@@ -22,7 +22,7 @@ from .serial_number_parser import (
     normalize_serial_number
 )
 from ..observability import get_metrics_collector
-from ..matching import MatchBehavior
+from ..matching import MatchBehavior, build_source_index
 
 logger = get_logger("merge_processor")
 
@@ -183,6 +183,7 @@ def process_row_with_models(
     output_folder: Path,
     fail_on_ambiguous: bool = True,
     quiet: bool = False,
+    source_index: Optional[List[Path]] = None,
 ) -> RowResult:
     """
     Process a single row using domain models: find PDFs and Excel files, convert Excel to PDF, and merge them.
@@ -193,6 +194,7 @@ def process_row_with_models(
         output_folder: Folder where merged PDFs will be saved
         fail_on_ambiguous: If True, raises ValueError on ambiguous matches (default: True)
         quiet: If True, suppress row-level logger output (use when progress callback handles logging order)
+        source_index: Optional pre-built list of source paths (from build_source_index) to avoid repeated directory listing
 
     Returns:
         RowResult with processing details
@@ -219,7 +221,12 @@ def process_row_with_models(
 
     for serial_number in row.serial_numbers:
         try:
-            source_path = find_source_file(source_folder, serial_number, fail_on_ambiguous=fail_on_ambiguous)
+            source_path = find_source_file(
+                source_folder,
+                serial_number,
+                fail_on_ambiguous=fail_on_ambiguous,
+                source_index=source_index,
+            )
             if source_path:
                 source_files.append(source_path)
                 if not quiet:
@@ -341,6 +348,9 @@ def process_job(
     metrics = get_metrics_collector()
     metrics.record_counter("jobs_started")
 
+    # Build source folder index once per job to avoid repeated directory listing per serial number
+    source_index = build_source_index(job.source_folder)
+
     try:
         use_progress = on_progress is not None
         for idx, row in enumerate(job.rows):
@@ -357,6 +367,7 @@ def process_job(
                 job.output_folder,
                 fail_on_ambiguous=fail_on_ambiguous,
                 quiet=use_progress,
+                source_index=source_index,
             )
             result.add_row_result(row_result)
 

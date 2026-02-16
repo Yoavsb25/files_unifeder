@@ -5,7 +5,7 @@ CustomTkinter GUI application for PDF Merger.
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import customtkinter as ctk
 
@@ -16,6 +16,9 @@ from ..licensing import LicenseManager
 from ..utils.logging_utils import get_logger, setup_logger
 from ..models import MergeResult
 from ..config.config_manager import load_config, save_config
+
+if TYPE_CHECKING:
+    from ..config.config_manager import AppConfig
 from .components import SetupCard, LicenseFrame, LogArea, ResultsFrame, Footer
 from .license_ui import update_license_display
 from .handlers import FileSelectionHandler, MergeHandler
@@ -48,25 +51,33 @@ APP_NAME = "PDF Batch Merger"
 class PDFMergerApp(ctk.CTk):
     """Main application window."""
 
-    def __init__(self, license_manager: Optional[LicenseManager] = None):
+    def __init__(
+        self,
+        license_manager: Optional[LicenseManager] = None,
+        initial_config: Optional["AppConfig"] = None,
+    ):
         super().__init__()
-        
+
         self.title(APP_NAME)
         self.geometry("1020x800")
         self.minsize(620, 500)
         self.configure(fg_color=APP_BACKGROUND)
-        
+
         # License manager (use passed-in instance to avoid duplicate validation at startup)
         self.license_manager = license_manager or LicenseManager(app_version=APP_VERSION)
         self.license_valid = False
-        
+
         # Paths
         self.input_file_path: Optional[Path] = None
         self.pdf_dir_path: Optional[Path] = None
         self.output_dir_path: Optional[Path] = None
-        
-        # Load configuration
-        self.config = load_config(start_path=Path.cwd())
+
+        # Use preloaded config from main when provided to avoid duplicate I/O
+        self.config = (
+            initial_config
+            if initial_config is not None
+            else load_config(start_path=Path.cwd())
+        )
         
         # Initialize handlers
         self._init_handlers()
@@ -513,12 +524,20 @@ class PDFMergerApp(ctk.CTk):
         self._update_ui_state()
 
 
-def run_gui(license_manager: Optional[LicenseManager] = None):
+def run_gui(
+    license_manager: Optional[LicenseManager] = None,
+    initial_config: Optional["AppConfig"] = None,
+):
     """Run the GUI application.
 
     Args:
         license_manager: Optional pre-validated LicenseManager instance.
             When provided (e.g. from main.py), avoids duplicate license validation at startup.
+        initial_config: Optional pre-loaded AppConfig from main. When provided, the app
+            skips loading config again for faster startup.
     """
-    app = PDFMergerApp(license_manager=license_manager)
+    app = PDFMergerApp(
+        license_manager=license_manager,
+        initial_config=initial_config,
+    )
     app.mainloop()

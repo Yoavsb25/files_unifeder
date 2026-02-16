@@ -11,11 +11,16 @@ from typing import List, Optional
 from ..core.constants import Constants
 from ..core.enums import MatchConfidence, MatchBehavior
 from ..utils.logging_utils import get_logger
+from typing import List as ListType
 
 logger = get_logger("matching.rules")
 
 # Module-level constants
 SOURCE_FILE_EXTENSIONS = Constants.SOURCE_FILE_EXTENSIONS
+
+# Type for pre-built source file index: list of paths (all source files in folder).
+# Used to avoid repeated folder.iterdir() per serial number.
+SourceFileIndex = ListType[Path]
 
 
 @dataclass
@@ -136,6 +141,177 @@ def find_matching_files(
     matches.sort(key=lambda p: str(p.resolve()))
     
     return matches
+
+
+def build_source_index(folder: Path) -> SourceFileIndex:
+    """
+    Build a single directory listing of all source files (PDF/Excel) in the folder.
+    Use this once per job and pass to find_matching_files_from_index / find_best_match_from_index
+    to avoid repeated folder.iterdir() for each serial number lookup.
+
+    Args:
+        folder: Path to the folder containing source files
+
+    Returns:
+        List of paths to source files (same filter as find_matching_files), sorted by full path
+    """
+    if not folder.exists() or not folder.is_dir():
+        return []
+    try:
+        files = [
+            p
+            for p in folder.iterdir()
+            if p.is_file() and p.suffix.lower() in SOURCE_FILE_EXTENSIONS
+        ]
+        files.sort(key=lambda p: str(p.resolve()))
+        return files
+    except (PermissionError, OSError) as e:
+        logger.warning(f"Error building source index for {folder}: {e}")
+        return []
+
+
+def find_matching_files_from_index(
+    source_index: SourceFileIndex,
+    filename: str,
+    normalize_unicode_flag: bool = True,
+) -> List[Path]:
+    """
+    Find all files matching the given filename using a pre-built source index.
+    Same matching rules as find_matching_files, but without listing the directory.
+
+    Args:
+        source_index: Pre-built list of source file paths (from build_source_index)
+        filename: Filename (with or without extension) to search for
+        normalize_unicode_flag: Whether to normalize Unicode (default: True)
+
+    Returns:
+        List of matching file paths, sorted alphabetically by full path
+    """
+    if not source_index:
+        return []
+
+    if normalize_unicode_flag:
+        filename_normalized = normalize_unicode(filename)
+    else:
+        filename_normalized = filename
+    filename_lower = filename_normalized.lower()
+    filename_stem = Path(filename_normalized).stem.lower()
+
+    matches = []
+    for source_file in source_index:
+        file_ext = source_file.suffix.lower()
+        if file_ext not in SOURCE_FILE_EXTENSIONS:
+            continue
+        if normalize_unicode_flag:
+            file_name_normalized = normalize_path_for_matching(source_file)
+        else:
+            file_name_normalized = source_file.name.lower()
+        file_stem_normalized = Path(file_name_normalized).stem.lower()
+
+        if file_name_normalized == filename_lower:
+            matches.append(source_file)
+        elif file_name_normalized == f"{filename_lower}{file_ext}":
+            matches.append(source_file)
+        elif file_stem_normalized == filename_stem:
+            matches.append(source_file)
+        elif file_stem_normalized == filename_lower:
+            matches.append(source_file)
+
+    matches.sort(key=lambda p: str(p.resolve()))
+    return matches
+
+
+def find_best_match_from_index(
+    source_index: SourceFileIndex,
+    filename: str,
+    behavior: MatchBehavior = MatchBehavior.FAIL_FAST,
+    normalize_unicode_flag: bool = True,
+) -> MatchResult:
+    """
+    Find the best matching file using a pre-built source index.
+    Same rules as find_best_match, but uses index instead of listing folder.
+
+    Args:
+        source_index: Pre-built list from build_source_index
+        filename: Filename (with or without extension) to search for
+        behavior: Behavior when multiple matches are found
+        normalize_unicode_flag: Whether to normalize Unicode (default: True)
+
+    Returns:
+        MatchResult with the best match and ambiguity information
+
+    Raises:
+        ValueError: If behavior is FAIL_FAST and multiple matches are found
+    """
+    all_matches = find_matching_files_from_index(
+        source_index, filename, normalize_unicode_flag
+    )
+    if not all_matches:
+        return MatchResult(
+            file_path=None,
+            confidence=MatchConfidence.LOW,
+            all_matches=[],
+            is_ambiguous=False,
+        )
+
+    if normalize_unicode_flag:
+        filename_normalized = normalize_unicode(filename)
+    else:
+        filename_normalized = filename
+    filename_lower = filename_normalized.lower()
+    filename_stem = Path(filename_normalized).stem.lower()
+
+    exact_matches = []
+    stem_matches = []
+    for match in all_matches:
+        if normalize_unicode_flag:
+            match_name_normalized = normalize_path_for_matching(match)
+        else:
+            match_name_normalized = match.name.lower()
+        match_stem_normalized = Path(match_name_normalized).stem.lower()
+        if (
+            match_name_normalized == filename_lower
+            or match_name_normalized == f"{filename_lower}{match.suffix.lower()}"
+        ):
+            exact_matches.append(match)
+        elif match_stem_normalized == filename_stem or match_stem_normalized == filename_lower:
+            stem_matches.append(match)
+
+    if exact_matches:
+        matches_to_use = exact_matches
+        confidence = MatchConfidence.EXACT
+    elif stem_matches:
+        matches_to_use = stem_matches
+        confidence = MatchConfidence.STEM
+    else:
+        matches_to_use = all_matches
+        confidence = MatchConfidence.LOW
+
+    is_ambiguous = len(matches_to_use) > 1
+    if is_ambiguous:
+        if behavior == MatchBehavior.FAIL_FAST:
+            match_paths_str = ", ".join(str(m) for m in matches_to_use)
+            raise ValueError(
+                f"Ambiguous match for '{filename}': multiple files found: {match_paths_str}"
+            )
+        elif behavior == MatchBehavior.WARN_FIRST:
+            match_paths_str = ", ".join(str(m) for m in matches_to_use)
+            logger.warning(
+                f"Ambiguous match for '{filename}': multiple files found: {match_paths_str}. "
+                f"Using first match: {matches_to_use[0]}"
+            )
+        elif behavior == MatchBehavior.LOG_ALL:
+            logger.info(f"Ambiguous match for '{filename}': {len(matches_to_use)} matches found:")
+            for i, match in enumerate(matches_to_use, 1):
+                logger.info(f"  {i}. {match}")
+
+    best_match = matches_to_use[0] if matches_to_use else None
+    return MatchResult(
+        file_path=best_match,
+        confidence=confidence,
+        all_matches=all_matches,
+        is_ambiguous=is_ambiguous,
+    )
 
 
 def find_best_match(

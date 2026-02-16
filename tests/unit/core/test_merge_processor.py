@@ -977,7 +977,10 @@ class TestProcessJob:
         mock_process_row.assert_called_once()
         call_kwargs = mock_process_row.call_args[1]
         assert call_kwargs['fail_on_ambiguous'] is False
-    
+        # Source index is built once per job and passed to avoid repeated directory listing
+        assert 'source_index' in call_kwargs
+        assert isinstance(call_kwargs['source_index'], list)
+
     @patch('pdf_merger.core.merge_processor.process_row_with_models')
     @patch('pdf_merger.core.merge_processor.get_metrics_collector')
     def test_process_job_empty_job(self, mock_metrics, mock_process_row, tmp_path):
