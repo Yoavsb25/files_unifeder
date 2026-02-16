@@ -46,7 +46,7 @@ def format_result_summary(result: Union[ProcessingResult, MergeResult]) -> str:
         lines.append(f"Skipped rows: {skipped}")
     
     if result.failed_rows:
-        failed_str = ', '.join(map(str, result.failed_rows))
+        failed_str = ", ".join(str(row_index + 1) for row_index in result.failed_rows)
         if len(failed_str) > MAX_DISPLAY_STRING_LENGTH:
             failed_str = failed_str[:MAX_DISPLAY_STRING_LENGTH - 3] + "..."
         lines.append(f"Failed row numbers: {failed_str}")
@@ -91,15 +91,15 @@ def format_result_detailed(result: Union[ProcessingResult, MergeResult]) -> str:
     
     if result.failed_rows:
         lines.append("Failed Row Numbers:" if isinstance(result, MergeResult) else "Failed/Skipped Row Numbers:")
-        for row_num in result.failed_rows:
-            lines.append(f"  - Row {row_num}")
+        for row_index in result.failed_rows:
+            lines.append(f"  - Row {row_index + 1}")
         lines.append("")
     
     if isinstance(result, MergeResult):
         if result.skipped_rows:
             lines.append("Skipped Row Numbers:")
-            for row_num in result.skipped_rows:
-                lines.append(f"  - Row {row_num}")
+            for row_index in result.skipped_rows:
+                lines.append(f"  - Row {row_index + 1}")
             lines.append("")
         
         # Add detailed row results if available

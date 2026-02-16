@@ -62,7 +62,8 @@ class TestRunMerge:
             file_path=input_file,
             source_folder=pdf_dir,
             output_folder=output_dir,
-            required_column="custom_column"
+            required_column="custom_column",
+            on_progress=None,
         )
     
     @patch('pdf_merger.core.merge_orchestrator.process_file')

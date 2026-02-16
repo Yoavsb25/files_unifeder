@@ -626,7 +626,7 @@ class TestPDFMergerApp:
         result = MergeResult(
             total_rows=5,
             successful_merges=4,
-            failed_rows=[2],
+            failed_rows=[0],
             skipped_rows=[],
         )
         
@@ -638,6 +638,7 @@ class TestPDFMergerApp:
         assert call_kw["rows_analyzed"] == 5
         assert call_kw["pdfs_created"] == 4
         assert call_kw["failed"] == 1
+        app._log_error.assert_any_call("Failed row numbers: 1")
     
     def test_on_merge_complete_failed(self):
         """Test merge completion with all failures."""

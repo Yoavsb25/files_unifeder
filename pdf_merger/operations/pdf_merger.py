@@ -63,32 +63,42 @@ def _get_pdf_libraries():
 def find_source_file(
     folder: Path,
     filename: str,
-    fail_on_ambiguous: bool = False
+    fail_on_ambiguous: bool = False,
+    source_index: Optional[List] = None,
 ) -> Optional[Path]:
     """
     Find a source file (PDF or Excel) matching the filename in the given folder.
     Uses formal matching rules with ambiguity detection.
-    
+
+    When source_index is provided (e.g. from build_source_index), uses the index
+    instead of listing the folder, which is much faster when resolving many
+    serial numbers in the same folder.
+
     Args:
-        folder: Path to the folder containing source files
+        folder: Path to the folder containing source files (used when source_index is None)
         filename: Filename (with or without extension) to search for
         fail_on_ambiguous: If True, raises ValueError on ambiguous matches (default: False)
-        
+        source_index: Optional pre-built list of source paths from build_source_index (default: None)
+
     Returns:
         Path to the source file if found, None otherwise
-        
+
     Raises:
         ValueError: If fail_on_ambiguous is True and multiple matches are found
     """
-    from ..matching import find_best_match, MatchBehavior
-    
+    from ..matching import find_best_match, find_best_match_from_index, MatchBehavior
+
     behavior = MatchBehavior.FAIL_FAST if fail_on_ambiguous else MatchBehavior.WARN_FIRST
-    
+
     try:
-        match_result = find_best_match(folder, filename, behavior=behavior)
+        if source_index is not None:
+            match_result = find_best_match_from_index(
+                source_index, filename, behavior=behavior
+            )
+        else:
+            match_result = find_best_match(folder, filename, behavior=behavior)
         return match_result.file_path
-    except ValueError as e:
-        # Re-raise ValueError from matching rules
+    except ValueError:
         raise
 
 

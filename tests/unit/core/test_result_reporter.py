@@ -33,7 +33,7 @@ class TestFormatResultSummary:
         result = ProcessingResult(
             total_rows=10,
             successful_merges=7,
-            failed_rows=[2, 5, 8]
+            failed_rows=[1, 4, 7]
         )
         
         summary = format_result_summary(result)
@@ -115,7 +115,7 @@ class TestFormatResultDetailed:
         result = ProcessingResult(
             total_rows=10,
             successful_merges=7,
-            failed_rows=[2, 5, 8]
+            failed_rows=[1, 4, 7]
         )
         
         report = format_result_detailed(result)
@@ -149,7 +149,7 @@ class TestFormatResultDetailed:
         result = ProcessingResult(
             total_rows=5,
             successful_merges=3,
-            failed_rows=[1, 4]
+            failed_rows=[0, 3]
         )
         
         report = format_result_detailed(result)
