@@ -7,10 +7,12 @@
 It merges PDF and Excel files into final PDF bundles, driven by instructions in CSV/Excel control files.  
 It is designed for **law firms, finance, and operations teams** that repeatedly build case files, deal books, or reporting packs.
 
-> **At a glance**  
-> - Spreadsheet in → fully assembled PDFs out  
-> - Excel and PDF in the same pipeline  
+> **At a glance**
+> - Spreadsheet in → fully assembled PDFs out
+> - Excel and PDF in the same pipeline
 > - Licensed, production‑grade desktop app
+
+![PDF Batch Merger UI](docs/screenshots/main-ui.png)
 
 ---
 
